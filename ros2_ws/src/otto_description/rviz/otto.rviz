@@ -22,9 +22,9 @@ Visualization Manager:
 
     - Class: rviz_default_plugins/TF
       Name: TF
-      Value: true
+      Value: false
       Show Axes: true
-      Show Names: true
+      Show Names: false
       Frame Timeout: 15
 
     - Class: rviz_default_plugins/Range
@@ -32,6 +32,7 @@ Visualization Manager:
       Value: true
       Topic:
         Value: /ultrasonic/range
+        Reliability Policy: Best Effort
       Buffer Length: 1
       Color: 0; 255; 0
 
