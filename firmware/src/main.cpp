@@ -10,6 +10,7 @@
 // Safety: servos stop on agent disconnect or cmd_vel timeout.
 
 #include <Arduino.h>
+#include <WiFi.h>
 #include <micro_ros_platformio.h>
 
 #include <rcl/rcl.h>
@@ -136,10 +137,26 @@ void setup() {
     Serial.println("[Otto] Connecting to WiFi...");
     led_status_color(255, 200, 0);  // Yellow
 
-    // This call blocks until WiFi connects
+    // This call blocks until WiFi connects (uses DHCP initially)
     IPAddress agent_ip;
     agent_ip.fromString(AGENT_IP);
     set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, agent_ip, AGENT_PORT);
+
+    // Apply static IP if configured (reconfigures after DHCP connect)
+#ifdef STATIC_IP
+    {
+        IPAddress static_ip, gateway, subnet;
+        static_ip.fromString(STATIC_IP);
+        gateway.fromString(STATIC_GATEWAY);
+        subnet.fromString(STATIC_SUBNET);
+        WiFi.config(static_ip, gateway, subnet);
+        Serial.print("[Otto] Static IP: ");
+        Serial.println(WiFi.localIP());
+    }
+#else
+    Serial.print("[Otto] DHCP IP: ");
+    Serial.println(WiFi.localIP());
+#endif
 
     // Stage 3: WiFi connected — cyan LEDs + beep
     Serial.println("[Otto] WiFi connected, waiting for micro-ROS agent...");
