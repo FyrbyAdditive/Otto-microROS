@@ -1,0 +1,27 @@
+# ROS2 Jazzy host environment for Otto Starter
+# Includes micro-ROS agent, SLAM, teleop, and all bringup dependencies.
+
+FROM ros:jazzy-ros-base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-jazzy-micro-ros-agent \
+    ros-jazzy-slam-toolbox \
+    ros-jazzy-teleop-twist-keyboard \
+    ros-jazzy-robot-state-publisher \
+    ros-jazzy-joint-state-publisher \
+    ros-jazzy-joint-state-publisher-gui \
+    ros-jazzy-xacro \
+    ros-jazzy-rviz2 \
+    ros-jazzy-tf2-ros \
+    python3-colcon-common-extensions \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and build workspace
+COPY ros2_ws /ros2_ws
+WORKDIR /ros2_ws
+RUN . /opt/ros/jazzy/setup.sh && \
+    colcon build --symlink-install && \
+    echo ". /ros2_ws/install/setup.bash" >> /root/.bashrc
+
+ENTRYPOINT ["/bin/bash", "-c", "source /ros2_ws/install/setup.bash && exec \"$@\"", "--"]
+CMD ["bash"]

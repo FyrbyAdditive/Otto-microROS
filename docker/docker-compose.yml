@@ -1,0 +1,39 @@
+# Otto Starter micro-ROS Docker Compose
+#
+# Quick start:
+#   docker compose up                    # Start agent + ROS2 stack
+#   docker compose up microros-agent     # Agent only
+#   docker compose run ros2 bash         # Interactive ROS2 shell
+#
+# The micro-ROS agent needs host networking for UDP discovery.
+
+services:
+  microros-agent:
+    image: microros/micro-ros-agent:jazzy
+    network_mode: host
+    command: udp4 --port 8888 -v4
+    restart: unless-stopped
+
+  ros2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ros2
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY:-}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    command: >
+      ros2 launch otto_bringup otto_microros.launch.py
+    depends_on:
+      - microros-agent
+
+  build-firmware:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.firmware
+    volumes:
+      - ../firmware/src/wifi_credentials.h:/firmware/src/wifi_credentials.h:ro
+    profiles:
+      - build
