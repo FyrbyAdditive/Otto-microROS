@@ -116,3 +116,14 @@ void led_off() {
     set_strip_color(us_leds, 0, 0, 0);
 #endif
 }
+
+void led_status_color(uint8_t r, uint8_t g, uint8_t b) {
+    set_strip_color(ring, r, g, b);
+#if !SERVO_TYPE_SERIAL_BUS
+    set_strip_color(us_leds, r, g, b);
+#endif
+}
+
+void led_status_off() {
+    led_off();
+}

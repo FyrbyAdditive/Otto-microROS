@@ -52,3 +52,23 @@ void buzzer_off() {
         ledcWrite(PIN_BUZZER, 0);
     }
 }
+
+void buzzer_tone(uint16_t freq_hz, uint16_t duration_ms) {
+    if (freq_hz == 0) {
+        buzzer_off();
+        return;
+    }
+    if (!buzzer_attached) {
+        ledcAttach(PIN_BUZZER, freq_hz, 8);
+        buzzer_attached = true;
+    } else {
+        ledcChangeFrequency(PIN_BUZZER, freq_hz, 8);
+    }
+    ledcWrite(PIN_BUZZER, 128);
+    delay(duration_ms);
+    ledcWrite(PIN_BUZZER, 0);
+}
+
+void buzzer_beep() {
+    buzzer_tone(1000, 50);
+}

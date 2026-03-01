@@ -12,4 +12,8 @@ void led_add_to_executor(rclc_executor_t *executor);
 void led_destroy_entities(rcl_node_t *node);
 void led_off();
 
+// Status indication (usable before micro-ROS is active)
+void led_status_color(uint8_t r, uint8_t g, uint8_t b);
+void led_status_off();
+
 #endif // LED_CONTROLLER_H

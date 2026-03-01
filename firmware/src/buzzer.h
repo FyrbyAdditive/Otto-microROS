@@ -12,4 +12,8 @@ void buzzer_add_to_executor(rclc_executor_t *executor);
 void buzzer_destroy_entities(rcl_node_t *node);
 void buzzer_off();
 
+// Status indication (usable before micro-ROS is active)
+void buzzer_tone(uint16_t freq_hz, uint16_t duration_ms);
+void buzzer_beep();
+
 #endif // BUZZER_H

@@ -127,12 +127,25 @@ void setup() {
     led_init();
     buzzer_init();
 
-    // Configure micro-ROS WiFi transport
+    // Stage 1: Power on — orange LEDs + startup beep
+    Serial.println("[Otto] Booting...");
+    led_status_color(255, 80, 0);  // Orange
+    buzzer_beep();
+
+    // Stage 2: Connecting WiFi — yellow LEDs
+    Serial.println("[Otto] Connecting to WiFi...");
+    led_status_color(255, 200, 0);  // Yellow
+
+    // This call blocks until WiFi connects
     IPAddress agent_ip;
     agent_ip.fromString(AGENT_IP);
     set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, agent_ip, AGENT_PORT);
 
+    // Stage 3: WiFi connected — cyan LEDs + beep
     Serial.println("[Otto] WiFi connected, waiting for micro-ROS agent...");
+    led_status_color(0, 200, 255);  // Cyan
+    buzzer_beep();
+
     state = WAITING_AGENT;
 }
 
@@ -141,8 +154,15 @@ void loop() {
 
     switch (state) {
         case WAITING_AGENT:
-            // Blink LED slowly while waiting
+            // Blink built-in LED + pulse cyan ring while searching for agent
             digitalWrite(PIN_LED_BUILTIN, (millis() / 500) % 2);
+            {
+                // Pulse cyan brightness using a triangle wave
+                uint8_t brightness = (millis() / 4) % 256;
+                if (brightness > 127) brightness = 255 - brightness;
+                brightness = brightness * 2;  // 0-254 range
+                led_status_color(0, (brightness * 200) / 255, brightness);
+            }
 
             if (millis() - last_state_change > AGENT_RECONNECT_MS) {
                 if (rmw_uros_ping_agent(AGENT_PING_TIMEOUT_MS, AGENT_PING_ATTEMPTS) == RMW_RET_OK) {
@@ -159,6 +179,12 @@ void loop() {
                 state = AGENT_CONNECTED;
                 last_state_change = millis();
                 digitalWrite(PIN_LED_BUILTIN, HIGH);  // Solid on
+
+                // Connected — green LEDs + ascending two-tone jingle
+                led_status_color(0, 255, 0);  // Green
+                buzzer_tone(880, 80);
+                delay(30);
+                buzzer_tone(1320, 120);
             } else {
                 Serial.println("[Otto] Failed to create entities, retrying...");
                 state = WAITING_AGENT;
@@ -185,11 +211,18 @@ void loop() {
             break;
 
         case AGENT_DISCONNECTED:
+            // Disconnected — red flash + warning tone
+            led_status_color(255, 0, 0);  // Red
+            buzzer_tone(440, 150);
+            delay(50);
+            buzzer_tone(330, 200);
+
             destroy_entities();
             Serial.println("[Otto] Entities destroyed, waiting for agent...");
             state = WAITING_AGENT;
             last_state_change = millis();
             digitalWrite(PIN_LED_BUILTIN, LOW);
+            // Cyan will resume on next loop iteration (WAITING_AGENT pulse)
             break;
     }
 }
