@@ -6,6 +6,7 @@
 #include "otto_config.h"
 #include <Arduino.h>
 #include <sensor_msgs/msg/battery_state.h>
+#include <rmw_microros/time_sync.h>
 #include <math.h>
 
 static rcl_publisher_t battery_pub;

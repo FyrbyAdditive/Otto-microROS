@@ -7,6 +7,7 @@
 #include "otto_config.h"
 #include <Arduino.h>
 #include <sensor_msgs/msg/range.h>
+#include <rmw_microros/time_sync.h>
 
 #if !SERVO_TYPE_SERIAL_BUS
 

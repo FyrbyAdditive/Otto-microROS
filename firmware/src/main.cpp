@@ -140,7 +140,9 @@ void setup() {
     // This call blocks until WiFi connects (uses DHCP initially)
     IPAddress agent_ip;
     agent_ip.fromString(AGENT_IP);
-    set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, agent_ip, AGENT_PORT);
+    char ssid[] = WIFI_SSID;
+    char pass[] = WIFI_PASSWORD;
+    set_microros_wifi_transports(ssid, pass, agent_ip, AGENT_PORT);
 
     // Apply static IP if configured (reconfigures after DHCP connect)
 #ifdef STATIC_IP

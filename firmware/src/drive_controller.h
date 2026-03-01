@@ -6,6 +6,7 @@
 
 #include <rcl/rcl.h>
 #include <rclc/rclc.h>
+#include <rclc/executor.h>
 
 void drive_init();
 void drive_create_entities(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator);

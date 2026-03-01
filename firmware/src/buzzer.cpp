@@ -2,15 +2,26 @@
 // Subscribes to /buzzer (std_msgs/UInt16).
 // Value 0 = silence, any other value = frequency in Hz.
 // Uses ESP32 LEDC peripheral for tone generation.
+// Note: ESP32 Arduino Core 2.0.x uses the legacy LEDC API
+//       (ledcSetup/ledcAttachPin/ledcWrite with channel numbers).
 
 #include "buzzer.h"
 #include "otto_config.h"
 #include <Arduino.h>
 #include <std_msgs/msg/u_int16.h>
 
+#define BUZZER_LEDC_CHANNEL  0  // LEDC channel 0 for buzzer
+#define BUZZER_LEDC_BITS     8  // 8-bit resolution
+
 static rcl_subscription_t buzzer_sub;
 static std_msgs__msg__UInt16 buzzer_msg;
 static bool buzzer_attached = false;
+
+static void buzzer_attach(uint32_t freq) {
+    ledcSetup(BUZZER_LEDC_CHANNEL, freq, BUZZER_LEDC_BITS);
+    ledcAttachPin(PIN_BUZZER, BUZZER_LEDC_CHANNEL);
+    buzzer_attached = true;
+}
 
 static void buzzer_callback(const void *msgin) {
     const std_msgs__msg__UInt16 *msg = (const std_msgs__msg__UInt16 *)msgin;
@@ -18,13 +29,8 @@ static void buzzer_callback(const void *msgin) {
     if (msg->data == 0) {
         buzzer_off();
     } else {
-        if (!buzzer_attached) {
-            ledcAttach(PIN_BUZZER, msg->data, 8);  // 8-bit resolution
-            buzzer_attached = true;
-        } else {
-            ledcChangeFrequency(PIN_BUZZER, msg->data, 8);
-        }
-        ledcWrite(PIN_BUZZER, 128);  // 50% duty cycle for max volume
+        buzzer_attach(msg->data);
+        ledcWrite(BUZZER_LEDC_CHANNEL, 128);  // 50% duty cycle for max volume
     }
 }
 
@@ -49,7 +55,7 @@ void buzzer_destroy_entities(rcl_node_t *node) {
 
 void buzzer_off() {
     if (buzzer_attached) {
-        ledcWrite(PIN_BUZZER, 0);
+        ledcWrite(BUZZER_LEDC_CHANNEL, 0);
     }
 }
 
@@ -58,15 +64,10 @@ void buzzer_tone(uint16_t freq_hz, uint16_t duration_ms) {
         buzzer_off();
         return;
     }
-    if (!buzzer_attached) {
-        ledcAttach(PIN_BUZZER, freq_hz, 8);
-        buzzer_attached = true;
-    } else {
-        ledcChangeFrequency(PIN_BUZZER, freq_hz, 8);
-    }
-    ledcWrite(PIN_BUZZER, 128);
+    buzzer_attach(freq_hz);
+    ledcWrite(BUZZER_LEDC_CHANNEL, 128);
     delay(duration_ms);
-    ledcWrite(PIN_BUZZER, 0);
+    ledcWrite(BUZZER_LEDC_CHANNEL, 0);
 }
 
 void buzzer_beep() {
