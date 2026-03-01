@@ -4,6 +4,7 @@
 // Disabled entirely when SERVO_TYPE_SERIAL_BUS=1 (GPIO 18/19 used for servo UART).
 
 #include "ultrasonic_sensor.h"
+#include "led_controller.h"
 #include "otto_config.h"
 #include <Arduino.h>
 #include <sensor_msgs/msg/range.h>
@@ -55,6 +56,9 @@ static void range_timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
     range_msg.header.stamp.nanosec = (uint32_t)(nanos % 1000000000LL);
 
     rcl_publish(&range_pub, &range_msg, NULL);
+
+    // Update ultrasonic LEDs with proximity color
+    led_proximity(distance_m);
 }
 
 void ultrasonic_init() {

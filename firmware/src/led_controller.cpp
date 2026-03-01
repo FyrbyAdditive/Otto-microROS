@@ -14,6 +14,7 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <std_msgs/msg/u_int8_multi_array.h>
+#include <math.h>
 
 static rcl_subscription_t led_sub;
 static std_msgs__msg__UInt8MultiArray led_msg;
@@ -119,11 +120,41 @@ void led_off() {
 
 void led_status_color(uint8_t r, uint8_t g, uint8_t b) {
     set_strip_color(ring, r, g, b);
-#if !SERVO_TYPE_SERIAL_BUS
-    set_strip_color(us_leds, r, g, b);
-#endif
+    // Ultrasonic LEDs reserved for proximity indicator
 }
 
 void led_status_off() {
     led_off();
+}
+
+void led_proximity(float distance_m) {
+#if !SERVO_TYPE_SERIAL_BUS
+    // Out of range or no echo — turn off
+    if (distance_m <= 0.0f || isinf(distance_m) || isnan(distance_m)) {
+        set_strip_color(us_leds, 0, 0, 0);
+        return;
+    }
+
+    // Clamp to usable range
+    if (distance_m < 0.02f) distance_m = 0.02f;
+    if (distance_m > 1.5f) distance_m = 1.5f;
+
+    uint8_t r, g, b = 0;
+    if (distance_m < 0.3f) {
+        // Red → orange: increase green as distance grows
+        float t = (distance_m - 0.02f) / (0.3f - 0.02f);  // 0..1
+        r = 255;
+        g = (uint8_t)(80.0f * t);
+    } else {
+        // Orange → green: decrease red, increase green
+        float t = (distance_m - 0.3f) / (1.0f - 0.3f);    // 0..1+
+        if (t > 1.0f) t = 1.0f;
+        r = (uint8_t)(255.0f * (1.0f - t));
+        g = (uint8_t)(80.0f + 175.0f * t);
+    }
+
+    set_strip_color(us_leds, r, g, b);
+#else
+    (void)distance_m;
+#endif
 }

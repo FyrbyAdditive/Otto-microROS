@@ -17,4 +17,7 @@ void led_off();
 void led_status_color(uint8_t r, uint8_t g, uint8_t b);
 void led_status_off();
 
+// Proximity indicator on ultrasonic LEDs (red=close, orange=mid, green=far)
+void led_proximity(float distance_m);
+
 #endif // LED_CONTROLLER_H
