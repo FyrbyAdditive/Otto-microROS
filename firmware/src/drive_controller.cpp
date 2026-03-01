@@ -25,6 +25,9 @@ static Servo servo_left;
 static Servo servo_right;
 #endif
 
+// Forward declaration
+void drive_attach();
+
 // cmd_vel callback — differential drive kinematics
 static void cmd_vel_callback(const void *msgin) {
     const geometry_msgs__msg__Twist *msg = (const geometry_msgs__msg__Twist *)msgin;
@@ -32,6 +35,9 @@ static void cmd_vel_callback(const void *msgin) {
 
     double linear_x = msg->linear.x;
     double angular_z = msg->angular.z;
+
+    // Re-attach servos if they were detached by drive_stop()
+    drive_attach();
 
     // Differential drive: convert (v, omega) to individual wheel velocities
     double v_left  = linear_x - (angular_z * WHEEL_BASE / 2.0);
@@ -45,9 +51,9 @@ static void cmd_vel_callback(const void *msgin) {
     sms_sts.WriteSpe(SERVO_BUS_ID_LEFT, speed_left, 0);
     sms_sts.WriteSpe(SERVO_BUS_ID_RIGHT, speed_right, 0);
 #else
-    // PWM servo: map velocity to microseconds offset from stop (1500us)
-    int us_left  = SERVO_STOP_US + (int)(v_left * SERVO_SPEED_SCALE);
-    int us_right = SERVO_STOP_US - (int)(v_right * SERVO_SPEED_SCALE);  // Inverted (mirror-mounted)
+    // PWM servo: map velocity to microseconds offset from calibrated stop point
+    int us_left  = (SERVO_STOP_US + SERVO_LEFT_TRIM)  + (int)(v_left * SERVO_SPEED_SCALE);
+    int us_right = (SERVO_STOP_US + SERVO_RIGHT_TRIM) - (int)(v_right * SERVO_SPEED_SCALE);  // Inverted (mirror-mounted)
 
     us_left  = constrain(us_left,  SERVO_MIN_US, SERVO_MAX_US);
     us_right = constrain(us_right, SERVO_MIN_US, SERVO_MAX_US);
@@ -68,8 +74,8 @@ void drive_init() {
 #else
     servo_left.attach(PIN_SERVO_LEFT, SERVO_MIN_US, SERVO_MAX_US);
     servo_right.attach(PIN_SERVO_RIGHT, SERVO_MIN_US, SERVO_MAX_US);
-    servo_left.writeMicroseconds(SERVO_STOP_US);
-    servo_right.writeMicroseconds(SERVO_STOP_US);
+    servo_left.writeMicroseconds(SERVO_STOP_US + SERVO_LEFT_TRIM);
+    servo_right.writeMicroseconds(SERVO_STOP_US + SERVO_RIGHT_TRIM);
 #endif
 }
 
@@ -93,8 +99,22 @@ void drive_stop() {
     sms_sts.WriteSpe(SERVO_BUS_ID_LEFT, 0, 0);
     sms_sts.WriteSpe(SERVO_BUS_ID_RIGHT, 0, 0);
 #else
-    servo_left.writeMicroseconds(SERVO_STOP_US);
-    servo_right.writeMicroseconds(SERVO_STOP_US);
+    // Detach stops the PWM signal entirely — no creep from miscalibrated neutral
+    servo_left.detach();
+    servo_right.detach();
+#endif
+}
+
+void drive_attach() {
+#if !SERVO_TYPE_SERIAL_BUS
+    if (!servo_left.attached()) {
+        servo_left.attach(PIN_SERVO_LEFT, SERVO_MIN_US, SERVO_MAX_US);
+        servo_left.writeMicroseconds(SERVO_STOP_US + SERVO_LEFT_TRIM);
+    }
+    if (!servo_right.attached()) {
+        servo_right.attach(PIN_SERVO_RIGHT, SERVO_MIN_US, SERVO_MAX_US);
+        servo_right.writeMicroseconds(SERVO_STOP_US + SERVO_RIGHT_TRIM);
+    }
 #endif
 }
 

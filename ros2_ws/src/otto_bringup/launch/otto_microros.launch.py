@@ -3,13 +3,17 @@
 Usage:
     ros2 launch otto_bringup otto_microros.launch.py
     ros2 launch otto_bringup otto_microros.launch.py agent_port:=9999
+    ros2 launch otto_bringup otto_microros.launch.py agent:=native
+    ros2 launch otto_bringup otto_microros.launch.py agent:=none   # run agent separately
 """
 
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess
-from launch.substitutions import Command, LaunchConfiguration
+from launch.conditions import IfCondition
+from launch.substitutions import Command, LaunchConfiguration, EqualsSubstitution
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -25,22 +29,50 @@ def generate_launch_description():
         'variant', default_value='wheeled',
         description='Robot variant: wheeled or biped')
 
-    robot_description = Command([
-        'xacro ', urdf_file,
-        ' variant:=', LaunchConfiguration('variant')])
+    agent_arg = DeclareLaunchArgument(
+        'agent', default_value='docker',
+        description='Agent mode: docker, native, or none')
 
-    # micro-ROS agent (UDP)
-    agent = ExecuteProcess(
+    robot_description = ParameterValue(
+        Command([
+            'xacro ', urdf_file,
+            ' variant:=', LaunchConfiguration('variant')]),
+        value_type=str)
+
+    # micro-ROS agent via Docker (default)
+    agent_docker = ExecuteProcess(
         cmd=[
-            'ros2', 'run', 'micro_ros_agent', 'micro_ros_agent',
+            'docker', 'run', '--rm', '--net=host',
+            'microros/micro-ros-agent:jazzy',
             'udp4', '--port', LaunchConfiguration('agent_port'), '-v4'],
-        output='screen')
+        output='screen',
+        condition=IfCondition(
+            EqualsSubstitution(LaunchConfiguration('agent'), 'docker')))
 
-    # Robot state publisher (URDF → TF)
+    # micro-ROS agent native (if built from source in ~/microros_agent_ws)
+    agent_native = ExecuteProcess(
+        cmd=[
+            'bash', '-c',
+            'source ~/microros_agent_ws/install/setup.bash && '
+            'ros2 run micro_ros_agent micro_ros_agent '
+            'udp4 --port 8888 -v4'],
+        output='screen',
+        condition=IfCondition(
+            EqualsSubstitution(LaunchConfiguration('agent'), 'native')))
+
+    # Robot state publisher (URDF -> TF)
     robot_state_pub = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         parameters=[{'robot_description': robot_description}],
+        output='screen')
+
+    # Joint state publisher — provides /joint_states for non-fixed joints
+    # (wheel continuous joints) so robot_state_publisher can compute TF.
+    # Without encoders, wheels stay at position 0 which is fine for nav.
+    joint_state_pub = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
         output='screen')
 
     # Dead-reckoning odometry
@@ -50,7 +82,7 @@ def generate_launch_description():
         name='otto_odom_publisher',
         output='screen')
 
-    # Ultrasonic Range → LaserScan
+    # Ultrasonic Range -> LaserScan
     scan_converter = Node(
         package='otto_bringup',
         executable='ultrasonic_to_laserscan.py',
@@ -61,8 +93,11 @@ def generate_launch_description():
     return LaunchDescription([
         agent_port_arg,
         variant_arg,
-        agent,
+        agent_arg,
+        agent_docker,
+        agent_native,
         robot_state_pub,
+        joint_state_pub,
         odom_pub,
         scan_converter,
     ])

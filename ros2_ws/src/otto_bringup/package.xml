@@ -11,6 +11,7 @@
 
   <exec_depend>otto_description</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>xacro</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>

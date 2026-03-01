@@ -13,4 +13,7 @@ void ultrasonic_create_entities(rcl_node_t *node, rclc_support_t *support, rcl_a
 void ultrasonic_add_to_executor(rclc_executor_t *executor);
 void ultrasonic_destroy_entities(rcl_node_t *node);
 
+// Standalone reading (works without micro-ROS, updates proximity LEDs)
+void ultrasonic_standalone_read();
+
 #endif // ULTRASONIC_SENSOR_H

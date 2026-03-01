@@ -89,6 +89,12 @@
 #define SERVO_MIN_US        1000   // Full speed one direction
 #define SERVO_MAX_US        2000   // Full speed other direction
 
+// Per-servo stop calibration offsets (microseconds added to SERVO_STOP_US).
+// Cheap continuous rotation servos rarely have dead-center at exactly 1500us.
+// Adjust until each wheel stops completely: positive = shift stop point up.
+#define SERVO_LEFT_TRIM        0
+#define SERVO_RIGHT_TRIM       0
+
 // Speed scale: maps m/s velocity to servo microsecond offset from center.
 // With max cmd_vel ~0.2 m/s mapping to 500us offset: SPEED_SCALE = 500 / 0.2 = 2500
 // Adjust empirically after testing with your servos.
@@ -98,7 +104,7 @@
 // Physical Dimensions (meters, for ROS)
 // ============================================================
 #define WHEEL_DIAMETER      0.049  // ~49mm from STEP CAD model
-#define WHEEL_BASE          0.108  // ~108mm axle-to-axle from STEP
+#define WHEEL_BASE          0.0814 // ~81.4mm axle-to-axle from STEP CAD
 #define WHEEL_RADIUS        (WHEEL_DIAMETER / 2.0)
 #define WHEEL_WIDTH         0.0055 // ~5.5mm tire (o-ring)
 

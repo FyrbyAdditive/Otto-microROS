@@ -91,6 +91,34 @@ void ultrasonic_destroy_entities(rcl_node_t *node) {
     rcl_timer_fini(&range_timer);
 }
 
+// Read distance from ultrasonic sensor (no micro-ROS needed)
+static float ultrasonic_measure() {
+    // Trigger pulse: drive pin HIGH for 10us
+    pinMode(PIN_US_TRIG_ECHO, OUTPUT);
+    digitalWrite(PIN_US_TRIG_ECHO, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(PIN_US_TRIG_ECHO, LOW);
+
+    // Read echo pulse width
+    pinMode(PIN_US_TRIG_ECHO, INPUT);
+    unsigned long duration = pulseIn(PIN_US_TRIG_ECHO, HIGH, 30000);
+
+    if (duration == 0) return INFINITY;
+    float distance_m = (duration * 0.000343f) / 2.0f;
+    if (distance_m < 0.02f || distance_m > 4.0f) return INFINITY;
+    return distance_m;
+}
+
+void ultrasonic_standalone_read() {
+    static unsigned long last_read = 0;
+    unsigned long now = millis();
+    if (now - last_read < US_PUBLISH_PERIOD_MS) return;
+    last_read = now;
+
+    float distance_m = ultrasonic_measure();
+    led_proximity(distance_m);
+}
+
 #else
 // Stubs when ultrasonic is disabled (serial bus servo mode)
 void ultrasonic_init() {}
@@ -99,4 +127,5 @@ void ultrasonic_create_entities(rcl_node_t *node, rclc_support_t *support, rcl_a
 }
 void ultrasonic_add_to_executor(rclc_executor_t *executor) { (void)executor; }
 void ultrasonic_destroy_entities(rcl_node_t *node) { (void)node; }
+void ultrasonic_standalone_read() {}
 #endif

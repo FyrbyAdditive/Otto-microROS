@@ -137,14 +137,8 @@ void setup() {
     Serial.println("[Otto] Connecting to WiFi...");
     led_status_color(255, 200, 0);  // Yellow
 
-    // This call blocks until WiFi connects (uses DHCP initially)
-    IPAddress agent_ip;
-    agent_ip.fromString(AGENT_IP);
-    char ssid[] = WIFI_SSID;
-    char pass[] = WIFI_PASSWORD;
-    set_microros_wifi_transports(ssid, pass, agent_ip, AGENT_PORT);
-
-    // Apply static IP if configured (reconfigures after DHCP connect)
+    // Apply static IP BEFORE WiFi.begin() — ESP32 requires this order.
+    // WiFi.config() after WiFi.begin() can break the network stack.
 #ifdef STATIC_IP
     {
         IPAddress static_ip, gateway, subnet;
@@ -152,13 +146,20 @@ void setup() {
         gateway.fromString(STATIC_GATEWAY);
         subnet.fromString(STATIC_SUBNET);
         WiFi.config(static_ip, gateway, subnet);
-        Serial.print("[Otto] Static IP: ");
-        Serial.println(WiFi.localIP());
+        Serial.print("[Otto] Using static IP: ");
+        Serial.println(STATIC_IP);
     }
-#else
-    Serial.print("[Otto] DHCP IP: ");
-    Serial.println(WiFi.localIP());
 #endif
+
+    // Connect WiFi and register micro-ROS UDP transport
+    IPAddress agent_ip;
+    agent_ip.fromString(AGENT_IP);
+    char ssid[] = WIFI_SSID;
+    char pass[] = WIFI_PASSWORD;
+    set_microros_wifi_transports(ssid, pass, agent_ip, AGENT_PORT);
+
+    Serial.print("[Otto] WiFi IP: ");
+    Serial.println(WiFi.localIP());
 
     // Stage 3: WiFi connected — cyan LEDs + beep
     Serial.println("[Otto] WiFi connected, waiting for micro-ROS agent...");
@@ -182,6 +183,9 @@ void loop() {
                 brightness = brightness * 2;  // 0-254 range
                 led_status_color(0, (brightness * 200) / 255, brightness);
             }
+
+            // Proximity LEDs work even without agent
+            ultrasonic_standalone_read();
 
             if (millis() - last_state_change > AGENT_RECONNECT_MS) {
                 if (rmw_uros_ping_agent(AGENT_PING_TIMEOUT_MS, AGENT_PING_ATTEMPTS) == RMW_RET_OK) {

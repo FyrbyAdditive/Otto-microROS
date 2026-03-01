@@ -20,18 +20,26 @@
   <xacro:property name="variant" value="$(arg variant)"/>
 
   <!-- ============================== -->
-  <!-- Physical Properties             -->
+  <!-- Physical Properties (from STEP) -->
   <!-- ============================== -->
   <xacro:property name="wheel_radius" value="0.0245"/>
   <xacro:property name="wheel_width" value="0.0055"/>
-  <xacro:property name="wheel_base" value="0.108"/>
+  <xacro:property name="wheel_base" value="0.0814"/>
   <xacro:property name="body_width" value="0.075"/>
   <xacro:property name="body_depth" value="0.072"/>
-  <xacro:property name="body_height" value="0.062"/>
+  <xacro:property name="body_height" value="0.072"/>
   <xacro:property name="caster_radius" value="0.006"/>
-  <xacro:property name="head_width" value="0.052"/>
-  <xacro:property name="head_depth" value="0.052"/>
-  <xacro:property name="head_height" value="0.025"/>
+  <xacro:property name="head_width" value="0.062"/>
+  <xacro:property name="head_depth" value="0.016"/>
+  <xacro:property name="head_height" value="0.032"/>
+
+  <!-- Positions relative to base_link (at axle height, from STEP CAD) -->
+  <xacro:property name="body_offset_x" value="0.0231"/>  <!-- body center forward of axle -->
+  <xacro:property name="body_offset_z" value="0.0252"/>   <!-- body center above axle -->
+  <xacro:property name="face_offset_x" value="0.0607"/>   <!-- face forward of axle -->
+  <xacro:property name="face_offset_z" value="0.0262"/>   <!-- face above axle -->
+  <xacro:property name="caster_offset_x" value="0.0431"/> <!-- caster forward of axle -->
+  <xacro:property name="caster_offset_z" value="-0.0187"/><!-- caster below axle -->
 
   <!-- ============================== -->
   <!-- Material Definitions            -->
@@ -101,14 +109,14 @@
   <!-- ============================== -->
   <link name="base_link">
     <visual>
-      <origin xyz="0 0 0.016" rpy="0 0 0"/>
+      <origin xyz="${body_offset_x} 0 ${body_offset_z}" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/body.stl"/>
       </geometry>
       <material name="otto_white"/>
     </visual>
     <collision>
-      <origin xyz="0 0 0.016" rpy="0 0 0"/>
+      <origin xyz="${body_offset_x} 0 ${body_offset_z}" rpy="0 0 0"/>
       <geometry>
         <box size="${body_depth} ${body_width} ${body_height}"/>
       </geometry>
@@ -117,12 +125,12 @@
   </link>
 
   <!-- ============================== -->
-  <!-- Head Link (ultrasonic mount)    -->
+  <!-- Head Link (face plate at front) -->
   <!-- ============================== -->
   <joint name="head_joint" type="fixed">
     <parent link="base_link"/>
     <child link="head_link"/>
-    <origin xyz="0 0 ${body_height/2 + head_height/2 + 0.016}" rpy="0 0 0"/>
+    <origin xyz="${face_offset_x} 0 ${face_offset_z}" rpy="0 0 0"/>
   </joint>
 
   <link name="head_link">
@@ -178,7 +186,7 @@
   <joint name="led_ring_joint" type="fixed">
     <parent link="base_link"/>
     <child link="led_ring_link"/>
-    <origin xyz="0.020 0 0.010" rpy="0 ${pi/2} 0"/>
+    <origin xyz="${body_offset_x} 0 ${body_offset_z + 0.030}" rpy="0 0 0"/>
   </joint>
 
   <link name="led_ring_link">
@@ -219,43 +227,65 @@
     <joint name="left_wheel_joint" type="continuous">
       <parent link="base_link"/>
       <child link="left_wheel_link"/>
-      <origin xyz="0 ${wheel_base/2} 0" rpy="${-pi/2} 0 0"/>
-      <axis xyz="0 0 1"/>
+      <origin xyz="0 ${wheel_base/2} 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
       <dynamics damping="0.01" friction="0.01"/>
     </joint>
 
     <link name="left_wheel_link">
       <visual>
         <geometry>
-          <mesh filename="package://otto_description/meshes/wheel.stl"/>
+          <mesh filename="package://otto_description/meshes/wheel_left.stl"/>
         </geometry>
         <material name="rubber_black"/>
       </visual>
       <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
           <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
       </collision>
       <xacro:cylinder_inertia m="0.015" r="${wheel_radius}" h="${wheel_width}"/>
+    </link>
+
+    <!-- Left Bracket -->
+    <joint name="left_bracket_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="left_bracket_link"/>
+      <origin xyz="0 ${wheel_base/2} 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="left_bracket_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://otto_description/meshes/bracket_left.stl"/>
+        </geometry>
+        <material name="otto_white"/>
+      </visual>
+      <inertial>
+        <mass value="0.005"/>
+        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+      </inertial>
     </link>
 
     <!-- Right Wheel -->
     <joint name="right_wheel_joint" type="continuous">
       <parent link="base_link"/>
       <child link="right_wheel_link"/>
-      <origin xyz="0 ${-wheel_base/2} 0" rpy="${-pi/2} 0 0"/>
-      <axis xyz="0 0 1"/>
+      <origin xyz="0 ${-wheel_base/2} 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
       <dynamics damping="0.01" friction="0.01"/>
     </joint>
 
     <link name="right_wheel_link">
       <visual>
         <geometry>
-          <mesh filename="package://otto_description/meshes/wheel.stl"/>
+          <mesh filename="package://otto_description/meshes/wheel_right.stl"/>
         </geometry>
         <material name="rubber_black"/>
       </visual>
       <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
           <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
@@ -263,11 +293,32 @@
       <xacro:cylinder_inertia m="0.015" r="${wheel_radius}" h="${wheel_width}"/>
     </link>
 
-    <!-- Ball Caster (rear support) -->
+    <!-- Right Bracket -->
+    <joint name="right_bracket_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="right_bracket_link"/>
+      <origin xyz="0 ${-wheel_base/2} 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="right_bracket_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://otto_description/meshes/bracket_right.stl"/>
+        </geometry>
+        <material name="otto_white"/>
+      </visual>
+      <inertial>
+        <mass value="0.005"/>
+        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+      </inertial>
+    </link>
+
+    <!-- Ball Caster (front support) -->
     <joint name="caster_joint" type="fixed">
       <parent link="base_link"/>
       <child link="caster_link"/>
-      <origin xyz="-0.030 0 ${-wheel_radius + caster_radius}" rpy="0 0 0"/>
+      <origin xyz="${caster_offset_x} 0 ${caster_offset_z}" rpy="0 0 0"/>
     </joint>
 
     <link name="caster_link">
@@ -283,6 +334,26 @@
         </geometry>
       </collision>
       <xacro:sphere_inertia m="0.007" r="${caster_radius}"/>
+    </link>
+
+    <!-- Rear Mount -->
+    <joint name="rear_mount_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="rear_mount_link"/>
+      <origin xyz="0.003 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="rear_mount_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://otto_description/meshes/rear_mount.stl"/>
+        </geometry>
+        <material name="otto_white"/>
+      </visual>
+      <inertial>
+        <mass value="0.005"/>
+        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+      </inertial>
     </link>
 
     <!-- IR Line Sensors (bottom, pointing down) -->

@@ -10,6 +10,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -22,9 +23,10 @@ def generate_launch_description():
         'variant', default_value='wheeled',
         description='Robot variant: wheeled or biped')
 
-    robot_description = Command([
-        'xacro ', urdf_file,
-        ' variant:=', LaunchConfiguration('variant')])
+    robot_description = ParameterValue(
+        Command(['xacro ', urdf_file,
+                 ' variant:=', LaunchConfiguration('variant')]),
+        value_type=str)
 
     robot_state_pub = Node(
         package='robot_state_publisher',

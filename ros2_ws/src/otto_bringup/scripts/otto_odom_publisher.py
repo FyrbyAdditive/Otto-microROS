@@ -38,6 +38,8 @@ class OdomPublisher(Node):
         self.linear_x = 0.0
         self.angular_z = 0.0
         self.last_time = self.get_clock().now()
+        self.last_cmd_time = self.get_clock().now()
+        self.cmd_vel_timeout = 0.5  # seconds, matches firmware CMD_VEL_TIMEOUT_MS
 
         # Subscribe to cmd_vel (best effort to match firmware publisher)
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -56,6 +58,7 @@ class OdomPublisher(Node):
     def cmd_vel_callback(self, msg):
         self.linear_x = msg.linear.x
         self.angular_z = msg.angular.z
+        self.last_cmd_time = self.get_clock().now()
 
     def timer_callback(self):
         now = self.get_clock().now()
@@ -64,6 +67,13 @@ class OdomPublisher(Node):
 
         if dt <= 0.0 or dt > 1.0:
             return
+
+        # Zero velocities if no cmd_vel received within timeout
+        # (matches firmware servo safety stop)
+        cmd_age = (now - self.last_cmd_time).nanoseconds / 1e9
+        if cmd_age > self.cmd_vel_timeout:
+            self.linear_x = 0.0
+            self.angular_z = 0.0
 
         # Integrate pose
         self.theta += self.angular_z * dt
