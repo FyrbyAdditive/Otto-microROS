@@ -100,6 +100,13 @@
 // Adjust empirically after testing with your servos.
 #define SERVO_SPEED_SCALE   2500.0
 
+// Dead band: minimum microsecond offset from neutral before the servo actually
+// moves. Offsets smaller than this get clamped to zero (neutral) to prevent
+// the servo from briefly spinning the wrong direction when crossing its
+// internal dead zone. Cheap "Tailor" servos can have 40-60us dead bands.
+// Set this to the widest dead band of your two servos (err on the high side).
+#define SERVO_DEAD_BAND_US    60
+
 // ============================================================
 // Physical Dimensions (meters, for ROS)
 // ============================================================

@@ -17,7 +17,7 @@ def generate_launch_description():
             output='screen',
             prefix='xterm -e',
             parameters=[{
-                'speed': 0.1,       # m/s — conservative for small robot
-                'turn': 0.5,        # rad/s
+                'speed': 0.2,       # m/s — max useful speed for PWM servos
+                'turn': 5.0,        # rad/s — aggressive turn for 81mm wheel base
             }]),
     ])

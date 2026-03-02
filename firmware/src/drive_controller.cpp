@@ -36,9 +36,6 @@ static void cmd_vel_callback(const void *msgin) {
     double linear_x = msg->linear.x;
     double angular_z = msg->angular.z;
 
-    // Re-attach servos if they were detached by drive_stop()
-    drive_attach();
-
     // Differential drive: convert (v, omega) to individual wheel velocities
     double v_left  = linear_x - (angular_z * WHEEL_BASE / 2.0);
     double v_right = linear_x + (angular_z * WHEEL_BASE / 2.0);
@@ -51,12 +48,30 @@ static void cmd_vel_callback(const void *msgin) {
     sms_sts.WriteSpe(SERVO_BUS_ID_LEFT, speed_left, 0);
     sms_sts.WriteSpe(SERVO_BUS_ID_RIGHT, speed_right, 0);
 #else
-    // PWM servo: map velocity to microseconds offset from calibrated stop point
-    int us_left  = (SERVO_STOP_US + SERVO_LEFT_TRIM)  + (int)(v_left * SERVO_SPEED_SCALE);
-    int us_right = (SERVO_STOP_US + SERVO_RIGHT_TRIM) - (int)(v_right * SERVO_SPEED_SCALE);  // Inverted (mirror-mounted)
+    // PWM servo: compute microsecond offset from calibrated neutral point
+    int neutral_left  = SERVO_STOP_US + SERVO_LEFT_TRIM;
+    int neutral_right = SERVO_STOP_US + SERVO_RIGHT_TRIM;
 
-    us_left  = constrain(us_left,  SERVO_MIN_US, SERVO_MAX_US);
-    us_right = constrain(us_right, SERVO_MIN_US, SERVO_MAX_US);
+    int offset_left  = (int)(v_left  * SERVO_SPEED_SCALE);
+    int offset_right = (int)(v_right * SERVO_SPEED_SCALE);
+
+    // Dead band: if the offset is smaller than the servo's mechanical dead zone,
+    // clamp to neutral. This prevents the servo from briefly spinning the wrong
+    // direction when the command crosses its internal dead band.
+    if (abs(offset_left)  < SERVO_DEAD_BAND_US) offset_left  = 0;
+    if (abs(offset_right) < SERVO_DEAD_BAND_US) offset_right = 0;
+
+    int us_left  = constrain(neutral_left  + offset_left,  SERVO_MIN_US, SERVO_MAX_US);
+    int us_right = constrain(neutral_right - offset_right,  SERVO_MIN_US, SERVO_MAX_US);  // Inverted (mirror-mounted)
+
+    // If both wheels are at neutral, detach to eliminate any residual PWM jitter
+    if (offset_left == 0 && offset_right == 0) {
+        drive_stop();
+        return;
+    }
+
+    // Re-attach servos if they were detached by a previous stop
+    drive_attach();
 
     servo_left.writeMicroseconds(us_left);
     servo_right.writeMicroseconds(us_right);

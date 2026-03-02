@@ -10,7 +10,10 @@
 #include <Arduino.h>
 #include <std_msgs/msg/u_int16.h>
 
-#define BUZZER_LEDC_CHANNEL  0  // LEDC channel 0 for buzzer
+// Use a high LEDC channel to avoid collision with ESP32Servo, which
+// allocates channels starting from 0.  Channels 8-15 belong to the
+// low-speed timer group and are never touched by ESP32Servo.
+#define BUZZER_LEDC_CHANNEL  15
 #define BUZZER_LEDC_BITS     8  // 8-bit resolution
 
 static rcl_subscription_t buzzer_sub;
