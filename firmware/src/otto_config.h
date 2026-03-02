@@ -78,7 +78,10 @@
 // ============================================================
 // LED Configuration
 // ============================================================
-#define LED_RING_COUNT        13   // WS2812B LEDs in the eye ring (Connector 5)
+#define LED_RING_COUNT        13   // Total WS2812B LEDs in eye module (Connector 5)
+#define LED_CENTER_INDEX       0   // Center LED (inside the ring)
+#define LED_RING_OUTER_COUNT  12   // LEDs around the ring perimeter (clock layout)
+// Ring LEDs are 1-12, arranged like a clock: 12=forward, 3=right, 6=back, 9=left
 #define LED_US_COUNT           6   // WS2812B LEDs on ultrasonic housing (Connector 1)
 
 // ============================================================

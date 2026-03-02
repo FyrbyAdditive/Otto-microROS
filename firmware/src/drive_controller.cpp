@@ -3,6 +3,7 @@
 // Supports both PWM servos and serial bus servos via compile-time flag.
 
 #include "drive_controller.h"
+#include "led_ring_status.h"
 #include "otto_config.h"
 #include <Arduino.h>
 #include <geometry_msgs/msg/twist.h>
@@ -35,6 +36,8 @@ static void cmd_vel_callback(const void *msgin) {
 
     double linear_x = msg->linear.x;
     double angular_z = msg->angular.z;
+
+    led_ring_status_set_velocity(linear_x, angular_z);
 
     // Differential drive: convert (v, omega) to individual wheel velocities
     double v_left  = linear_x - (angular_z * WHEEL_BASE / 2.0);
@@ -110,6 +113,7 @@ void drive_destroy_entities(rcl_node_t *node) {
 }
 
 void drive_stop() {
+    led_ring_status_set_velocity(0, 0);
 #if SERVO_TYPE_SERIAL_BUS
     sms_sts.WriteSpe(SERVO_BUS_ID_LEFT, 0, 0);
     sms_sts.WriteSpe(SERVO_BUS_ID_RIGHT, 0, 0);

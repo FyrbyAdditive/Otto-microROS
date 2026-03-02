@@ -127,6 +127,14 @@ void led_status_off() {
     led_off();
 }
 
+void led_ring_set_pixel(uint16_t index, uint8_t r, uint8_t g, uint8_t b) {
+    ring.setPixelColor(index, ring.Color(r, g, b));
+}
+
+void led_ring_show() {
+    ring.show();
+}
+
 void led_proximity(float distance_m) {
 #if !SERVO_TYPE_SERIAL_BUS
     // Out of range or no echo — turn off

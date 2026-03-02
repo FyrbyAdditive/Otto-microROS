@@ -26,6 +26,7 @@
 #include "line_sensor.h"
 #include "battery_monitor.h"
 #include "led_controller.h"
+#include "led_ring_status.h"
 #include "buzzer.h"
 
 // WiFi credentials (user must copy wifi_credentials.h.example)
@@ -208,6 +209,10 @@ void loop() {
                 buzzer_tone(880, 80);
                 delay(30);
                 buzzer_tone(1320, 120);
+
+                // Start ring status animation (idle: purple center, dim blue ring)
+                led_ring_status_start();
+                led_ring_status_update();
             } else {
                 Serial.println("[Otto] Failed to create entities, retrying...");
                 state = WAITING_AGENT;
@@ -221,6 +226,9 @@ void loop() {
 
             // Check cmd_vel timeout (safety stop)
             drive_check_timeout();
+
+            // Update ring LED status animation
+            led_ring_status_update();
 
             // Periodic agent ping to detect disconnection
             if (millis() - last_state_change > 2000) {

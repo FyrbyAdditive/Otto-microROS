@@ -20,4 +20,8 @@ void led_status_off();
 // Proximity indicator on ultrasonic LEDs (red=close, orange=mid, green=far)
 void led_proximity(float distance_m);
 
+// Direct pixel access for ring status animations
+void led_ring_set_pixel(uint16_t index, uint8_t r, uint8_t g, uint8_t b);
+void led_ring_show();
+
 #endif // LED_CONTROLLER_H
