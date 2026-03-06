@@ -37,8 +37,16 @@ info "ROS2 Jazzy found."
 source "$ROS_SETUP"
 
 # ── 2. Install ROS2 packages ──────────────────────────────────────────────────
-info "Installing ROS2 packages (may ask for your password)..."
+info "Checking sudo access (you may be asked for your password)..."
+if ! sudo -v; then
+    error "sudo access is required to install packages.\n  Ask an administrator to add you to the sudo group."
+fi
+# Keep the sudo timestamp alive for the duration of the script
+while true; do sudo -n true; sleep 50; done 2>/dev/null &
+SUDO_KEEPALIVE_PID=$!
+trap 'kill $SUDO_KEEPALIVE_PID 2>/dev/null' EXIT
 
+info "Installing ROS2 packages..."
 sudo apt-get install -y \
     ros-jazzy-micro-ros-agent \
     ros-jazzy-slam-toolbox \
