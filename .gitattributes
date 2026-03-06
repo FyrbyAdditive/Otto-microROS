@@ -1,0 +1,4 @@
+hardware/*.stp filter=lfs diff=lfs merge=lfs -text
+hardware/*.STEP filter=lfs diff=lfs merge=lfs -text
+hardware/*.STP filter=lfs diff=lfs merge=lfs -text
+hardware/*.step filter=lfs diff=lfs merge=lfs -text

@@ -29,8 +29,4 @@ ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 
-# CAD source files (large binaries — obtain separately)
-hardware/*.step
-hardware/*.stp
-hardware/*.STEP
-hardware/*.STP
+# CAD source files are tracked via Git LFS (see .gitattributes)
