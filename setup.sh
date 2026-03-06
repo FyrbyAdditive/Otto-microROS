@@ -78,10 +78,10 @@ else
     info "ROS2 already sourced in ~/.bashrc."
 fi
 
-if ! grep -qF "source $WS_SETUP" "$BASHRC"; then
+if ! grep -qF "source \"$WS_SETUP\"" "$BASHRC"; then
     info "Adding workspace source to ~/.bashrc..."
     echo "# micro-ROS Otto workspace" >> "$BASHRC"
-    echo "source $WS_SETUP" >> "$BASHRC"
+    echo "source \"$WS_SETUP\"" >> "$BASHRC"
 else
     info "Workspace already sourced in ~/.bashrc."
 fi
