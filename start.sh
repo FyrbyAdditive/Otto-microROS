@@ -58,19 +58,22 @@ echo ""
 # otherwise fall back to launching both in this terminal via tmux,
 # otherwise print clear instructions.
 
+# Export so subshells inherit them (paths may contain spaces)
+export ROS_SETUP WS_SETUP
+
 if command -v gnome-terminal &>/dev/null && [ -n "$DISPLAY" ]; then
     # Open agent in a new tab, bringup in another
     gnome-terminal \
         --tab --title="micro-ROS Agent" \
-            -- bash -c "source $ROS_SETUP && source $WS_SETUP && \
-                        echo 'micro-ROS Agent — waiting for robot...' && \
+            -- bash -c 'source "$ROS_SETUP" && source "$WS_SETUP" && \
+                        echo "micro-ROS Agent — waiting for robot..." && \
                         ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888; \
-                        echo 'Agent stopped. Press Enter to close.'; read" \
+                        echo "Agent stopped. Press Enter to close."; read' \
         --tab --title="Otto Bringup" \
-            -- bash -c "source $ROS_SETUP && source $WS_SETUP && \
+            -- bash -c 'source "$ROS_SETUP" && source "$WS_SETUP" && \
                         sleep 2 && \
                         ros2 launch otto_bringup otto_microros.launch.py agent:=none; \
-                        echo 'Bringup stopped. Press Enter to close.'; read"
+                        echo "Bringup stopped. Press Enter to close."; read'
     echo "Opened two terminal tabs: 'micro-ROS Agent' and 'Otto Bringup'."
     echo "Close those tabs to stop the robot stack."
 
@@ -79,10 +82,10 @@ elif command -v tmux &>/dev/null; then
     tmux new-session -d -s "$SESSION" -x 220 -y 50
     tmux rename-window -t "$SESSION:0" "Agent"
     tmux send-keys -t "$SESSION:0" \
-        "source $ROS_SETUP && source $WS_SETUP && ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888" Enter
+        'source "$ROS_SETUP" && source "$WS_SETUP" && ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888' Enter
     tmux new-window -t "$SESSION" -n "Bringup"
     tmux send-keys -t "$SESSION:1" \
-        "sleep 2 && source $ROS_SETUP && source $WS_SETUP && ros2 launch otto_bringup otto_microros.launch.py agent:=none" Enter
+        'sleep 2 && source "$ROS_SETUP" && source "$WS_SETUP" && ros2 launch otto_bringup otto_microros.launch.py agent:=none' Enter
     echo "Started tmux session '$SESSION'."
     echo "Attach with:  tmux attach -t $SESSION"
     echo "Stop with:    tmux kill-session -t $SESSION"
@@ -93,8 +96,8 @@ else
     echo -e "${YELLOW}Tip:${NC} Install tmux for a better experience: sudo apt install tmux"
     echo ""
     echo "Starting micro-ROS agent in the background..."
-    bash -c "source $ROS_SETUP && source $WS_SETUP && \
-             ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888" &
+    bash -c 'source "$ROS_SETUP" && source "$WS_SETUP" && \
+             ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888' &
     AGENT_PID=$!
     trap "kill $AGENT_PID 2>/dev/null; exit" INT TERM
 
