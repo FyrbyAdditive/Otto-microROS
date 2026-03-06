@@ -1,0 +1,89 @@
+#!/bin/bash
+# setup.sh — One-time setup for the HP Robots Otto micro-ROS project.
+# Installs all ROS2 dependencies and builds the workspace.
+# Safe to run again — it skips steps that are already done.
+#
+# Usage:
+#   bash setup.sh
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WS_DIR="$SCRIPT_DIR/ros2_ws"
+ROS_SETUP="/opt/ros/jazzy/setup.bash"
+
+# Colours for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+info()    { echo -e "${GREEN}[setup]${NC} $*"; }
+warning() { echo -e "${YELLOW}[setup]${NC} $*"; }
+error()   { echo -e "${RED}[setup] ERROR:${NC} $*"; exit 1; }
+
+echo ""
+echo "  HP Robots Otto — setup"
+echo "  ======================"
+echo ""
+
+# ── 1. Check ROS2 Jazzy ───────────────────────────────────────────────────────
+if [ ! -f "$ROS_SETUP" ]; then
+    error "ROS2 Jazzy not found at $ROS_SETUP.\n  Install it from: https://docs.ros.org/en/jazzy/Installation.html"
+fi
+info "ROS2 Jazzy found."
+
+# Source ROS2 for this script
+source "$ROS_SETUP"
+
+# ── 2. Install ROS2 packages ──────────────────────────────────────────────────
+info "Installing ROS2 packages (may ask for your password)..."
+
+sudo apt-get install -y \
+    ros-jazzy-micro-ros-agent \
+    ros-jazzy-slam-toolbox \
+    ros-jazzy-teleop-twist-keyboard \
+    ros-jazzy-robot-state-publisher \
+    ros-jazzy-joint-state-publisher \
+    ros-jazzy-joint-state-publisher-gui \
+    ros-jazzy-xacro \
+    ros-jazzy-rviz2 \
+    ros-jazzy-tf2-ros \
+    python3-colcon-common-extensions
+
+# ── 3. Build the ROS2 workspace ───────────────────────────────────────────────
+info "Building the ROS2 workspace..."
+cd "$WS_DIR"
+colcon build --symlink-install
+cd "$SCRIPT_DIR"
+
+# ── 4. Patch ~/.bashrc ────────────────────────────────────────────────────────
+WS_SETUP="$WS_DIR/install/setup.bash"
+BASHRC="$HOME/.bashrc"
+
+if ! grep -qF "source $ROS_SETUP" "$BASHRC"; then
+    info "Adding ROS2 source to ~/.bashrc..."
+    echo "" >> "$BASHRC"
+    echo "# ROS2 Jazzy" >> "$BASHRC"
+    echo "source $ROS_SETUP" >> "$BASHRC"
+else
+    info "ROS2 already sourced in ~/.bashrc."
+fi
+
+if ! grep -qF "source $WS_SETUP" "$BASHRC"; then
+    info "Adding workspace source to ~/.bashrc..."
+    echo "# micro-ROS Otto workspace" >> "$BASHRC"
+    echo "source $WS_SETUP" >> "$BASHRC"
+else
+    info "Workspace already sourced in ~/.bashrc."
+fi
+
+# ── 5. Done ───────────────────────────────────────────────────────────────────
+echo ""
+echo -e "${GREEN}  Setup complete!${NC}"
+echo ""
+echo "  Next steps:"
+echo "  1. Open a new terminal (or run: source ~/.bashrc)"
+echo "  2. Power on the robot and wait for the blue LED to blink"
+echo "  3. Run:  ./start.sh"
+echo ""

@@ -3,8 +3,8 @@
 Usage:
     ros2 launch otto_bringup otto_microros.launch.py
     ros2 launch otto_bringup otto_microros.launch.py agent_port:=9999
-    ros2 launch otto_bringup otto_microros.launch.py agent:=native
-    ros2 launch otto_bringup otto_microros.launch.py agent:=none   # run agent separately
+    ros2 launch otto_bringup otto_microros.launch.py agent:=none   # agent already running
+    ros2 launch otto_bringup otto_microros.launch.py agent:=docker # use Docker agent
 """
 
 import os
@@ -30,8 +30,8 @@ def generate_launch_description():
         description='Robot variant: wheeled or biped')
 
     agent_arg = DeclareLaunchArgument(
-        'agent', default_value='docker',
-        description='Agent mode: docker, native, or none')
+        'agent', default_value='native',
+        description='Agent mode: native, docker, or none')
 
     robot_description = ParameterValue(
         Command([
@@ -49,13 +49,11 @@ def generate_launch_description():
         condition=IfCondition(
             EqualsSubstitution(LaunchConfiguration('agent'), 'docker')))
 
-    # micro-ROS agent native (if built from source in ~/microros_agent_ws)
+    # micro-ROS agent — installed via apt (ros-jazzy-micro-ros-agent)
     agent_native = ExecuteProcess(
         cmd=[
-            'bash', '-c',
-            'source ~/microros_agent_ws/install/setup.bash && '
-            'ros2 run micro_ros_agent micro_ros_agent '
-            'udp4 --port 8888 -v4'],
+            'ros2', 'run', 'micro_ros_agent', 'micro_ros_agent',
+            'udp4', '--port', LaunchConfiguration('agent_port'), '-v4'],
         output='screen',
         condition=IfCondition(
             EqualsSubstitution(LaunchConfiguration('agent'), 'native')))
