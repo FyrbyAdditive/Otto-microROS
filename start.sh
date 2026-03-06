@@ -58,8 +58,18 @@ echo ""
 # otherwise fall back to launching both in this terminal via tmux,
 # otherwise print clear instructions.
 
+# Determine which micro-ROS agent command is available
+if ros2 pkg list 2>/dev/null | grep -q micro_ros_agent; then
+    AGENT_CMD="ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888"
+elif command -v MicroXRCEAgent >/dev/null 2>&1; then
+    AGENT_CMD="MicroXRCEAgent udp4 -p 8888"
+else
+    echo -e "${RED}ERROR:${NC} micro-ROS agent not found. Run ./setup.sh first."
+    exit 1
+fi
+
 # Export so subshells inherit them (paths may contain spaces)
-export ROS_SETUP WS_SETUP
+export ROS_SETUP WS_SETUP AGENT_CMD
 
 if command -v gnome-terminal &>/dev/null && [ -n "$DISPLAY" ]; then
     # Open agent in a new tab, bringup in another
@@ -67,7 +77,7 @@ if command -v gnome-terminal &>/dev/null && [ -n "$DISPLAY" ]; then
         --tab --title="micro-ROS Agent" \
             -- bash -c 'source "$ROS_SETUP" && source "$WS_SETUP" && \
                         echo "micro-ROS Agent — waiting for robot..." && \
-                        ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888; \
+                        eval "$AGENT_CMD"; \
                         echo "Agent stopped. Press Enter to close."; read' \
         --tab --title="Otto Bringup" \
             -- bash -c 'source "$ROS_SETUP" && source "$WS_SETUP" && \
@@ -82,7 +92,7 @@ elif command -v tmux &>/dev/null; then
     tmux new-session -d -s "$SESSION" -x 220 -y 50
     tmux rename-window -t "$SESSION:0" "Agent"
     tmux send-keys -t "$SESSION:0" \
-        'source "$ROS_SETUP" && source "$WS_SETUP" && ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888' Enter
+        'source "$ROS_SETUP" && source "$WS_SETUP" && eval "$AGENT_CMD"' Enter
     tmux new-window -t "$SESSION" -n "Bringup"
     tmux send-keys -t "$SESSION:1" \
         'sleep 2 && source "$ROS_SETUP" && source "$WS_SETUP" && ros2 launch otto_bringup otto_microros.launch.py agent:=none' Enter
@@ -96,8 +106,7 @@ else
     echo -e "${YELLOW}Tip:${NC} Install tmux for a better experience: sudo apt install tmux"
     echo ""
     echo "Starting micro-ROS agent in the background..."
-    bash -c 'source "$ROS_SETUP" && source "$WS_SETUP" && \
-             ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888' &
+    bash -c 'source "$ROS_SETUP" && source "$WS_SETUP" && eval "$AGENT_CMD"' &
     AGENT_PID=$!
     trap "kill $AGENT_PID 2>/dev/null; exit" INT TERM
 

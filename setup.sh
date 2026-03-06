@@ -48,7 +48,6 @@ trap 'kill $SUDO_KEEPALIVE_PID 2>/dev/null' EXIT
 
 info "Installing ROS2 packages..."
 sudo apt-get install -y \
-    ros-jazzy-micro-ros-agent \
     ros-jazzy-slam-toolbox \
     ros-jazzy-teleop-twist-keyboard \
     ros-jazzy-robot-state-publisher \
@@ -58,6 +57,24 @@ sudo apt-get install -y \
     ros-jazzy-rviz2 \
     ros-jazzy-tf2-ros \
     python3-colcon-common-extensions
+
+# micro-ROS agent: try apt first, then build the eProsima standalone agent
+if apt-cache show ros-jazzy-micro-ros-agent >/dev/null 2>&1; then
+    info "Installing micro-ROS agent via apt..."
+    sudo apt-get install -y ros-jazzy-micro-ros-agent
+elif ! command -v MicroXRCEAgent >/dev/null 2>&1; then
+    info "Building Micro XRCE-DDS Agent from source (one-time, takes ~5 min)..."
+    sudo apt-get install -y cmake libasio-dev libtinyxml2-dev libssl-dev
+    AGENT_SRC="$SCRIPT_DIR/.build/micro-xrce-dds-agent"
+    git clone --depth 1 \
+        https://github.com/eProsima/Micro-XRCE-DDS-Agent.git "$AGENT_SRC"
+    cmake -B "$AGENT_SRC/build" "$AGENT_SRC" -DCMAKE_BUILD_TYPE=Release
+    cmake --build "$AGENT_SRC/build" -j"$(nproc)"
+    sudo cmake --install "$AGENT_SRC/build"
+    info "MicroXRCEAgent installed to /usr/local/bin."
+else
+    info "MicroXRCEAgent already installed."
+fi
 
 # ── 3. Build the ROS2 workspace ───────────────────────────────────────────────
 info "Building the ROS2 workspace..."

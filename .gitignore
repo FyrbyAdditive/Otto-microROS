@@ -30,3 +30,6 @@ ros2_ws/install/
 ros2_ws/log/
 
 # CAD source files are tracked via Git LFS (see .gitattributes)
+
+# micro-ROS agent source build (created by setup.sh if apt install fails)
+.build/
