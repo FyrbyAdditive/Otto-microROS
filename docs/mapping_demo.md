@@ -23,10 +23,6 @@ Turn on the robot. The built-in blue LED will blink while searching for the micr
 ### 3. Start the mapping stack
 
 ```bash
-# Option A: Docker
-docker compose -f docker/docker-compose.yml up
-
-# Option B: Native
 ros2 launch otto_bringup otto_mapping_demo.launch.py
 ```
 

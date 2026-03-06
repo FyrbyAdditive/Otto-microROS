@@ -1,6 +1,6 @@
 # HP Robots Otto — micro-ROS Project
 
-Control your HP Robots Otto Starter Kit with ROS2. The robot runs micro-ROS firmware on its ESP32, connecting to your computer over WiFi so you can drive it with keyboard controls, visualise its sensors in 3D, and even build maps of the room.
+Control your HP Robots Otto Starter Kit with ROS2! This cute little educationmal robot runs micro-ROS firmware on its ESP32 and connects wirelessly to your computer so you can drive it with keyboard controls, visualise its sensors in 3D, and even build maps of the room!
 
 ---
 
@@ -218,29 +218,6 @@ This uses GPIO 18/19 for the servo UART instead of the ultrasonic sensor. See [d
 ## Troubleshooting
 
 See [docs/troubleshooting.md](docs/troubleshooting.md).
-
----
-
-<details>
-<summary>Docker (alternative for macOS / Windows users)</summary>
-
-If you're not running Ubuntu with ROS2 Jazzy, you can use Docker instead:
-
-**Install Docker** ([macOS](https://docs.docker.com/desktop/install/mac-install/) · [Windows WSL2](https://docs.docker.com/desktop/install/windows-install/) · Ubuntu: `sudo apt install docker.io docker-compose-v2 && sudo usermod -aG docker $USER`)
-
-**Start the full stack:**
-```bash
-docker compose -f docker/docker-compose.yml up
-```
-
-**Useful commands:**
-```bash
-docker compose -f docker/docker-compose.yml up microros-agent   # agent only
-docker compose -f docker/docker-compose.yml run ros2 bash       # interactive shell
-docker compose -f docker/docker-compose.yml down                # stop everything
-```
-
-</details>
 
 ---
 

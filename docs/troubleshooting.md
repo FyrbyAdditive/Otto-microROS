@@ -9,7 +9,7 @@
 
 **Agent not reachable**
 - Verify `AGENT_IP` in `wifi_credentials.h` matches the host machine's IP
-- Ensure the micro-ROS agent is running: `docker compose up microros-agent`
+- Ensure the micro-ROS agent is running (check the Agent tab from `./start.sh`)
 - Check firewall: UDP port 8888 must be open on the host
 - Test connectivity: the ESP32 and host must be on the same subnet
 
@@ -65,17 +65,12 @@
 - Measure actual cell voltage with a multimeter, compare to reported value
 - Adjust ratio: `actual_voltage / reported_voltage * current_ratio`
 
-## ROS2 / Docker Issues
+## ROS2 Issues
 
 **No topics visible**
 - Ensure the agent is running and the ESP32 is connected (solid blue LED)
-- Check ROS_DOMAIN_ID matches between host and Docker container
 - Try: `ros2 daemon stop && ros2 daemon start`
 
 **RViz shows no robot model**
 - Verify robot_state_publisher is running: `ros2 node list`
 - Check URDF loaded correctly: `ros2 param get /robot_state_publisher robot_description`
-
-**Docker X11 forwarding fails (no RViz window)**
-- Run `xhost +local:docker` on the host before `docker compose up`
-- Ensure DISPLAY environment variable is set
