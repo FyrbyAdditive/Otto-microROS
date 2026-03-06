@@ -163,6 +163,8 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 ## Project structure
 
 ```
+├── hardware/                   # CAD source files (not in git — see docs/hardware.md)
+│   └── ZGX Otto.step           # Shapr3D robot design (STEP format)
 ├── firmware/                   # ESP32 micro-ROS firmware (PlatformIO)
 │   ├── platformio.ini
 │   └── src/
@@ -184,6 +186,7 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 └── docs/
     ├── flashing.md             # Detailed flashing guide
     ├── wiring.md               # GPIO pin reference
+    ├── hardware.md             # CAD source files and mesh export
     ├── mapping_demo.md         # SLAM walkthrough
     └── troubleshooting.md      # Common issues
 ```

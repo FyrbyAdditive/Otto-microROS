@@ -248,26 +248,6 @@
       <xacro:cylinder_inertia m="0.015" r="${wheel_radius}" h="${wheel_width}"/>
     </link>
 
-    <!-- Left Bracket -->
-    <joint name="left_bracket_joint" type="fixed">
-      <parent link="base_link"/>
-      <child link="left_bracket_link"/>
-      <origin xyz="0 ${wheel_base/2} 0" rpy="0 0 0"/>
-    </joint>
-
-    <link name="left_bracket_link">
-      <visual>
-        <geometry>
-          <mesh filename="package://otto_description/meshes/bracket_left.stl"/>
-        </geometry>
-        <material name="otto_white"/>
-      </visual>
-      <inertial>
-        <mass value="0.005"/>
-        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
-      </inertial>
-    </link>
-
     <!-- Right Wheel -->
     <joint name="right_wheel_joint" type="continuous">
       <parent link="base_link"/>
@@ -293,27 +273,6 @@
       <xacro:cylinder_inertia m="0.015" r="${wheel_radius}" h="${wheel_width}"/>
     </link>
 
-    <!-- Right Bracket -->
-    <joint name="right_bracket_joint" type="fixed">
-      <parent link="base_link"/>
-      <child link="right_bracket_link"/>
-      <origin xyz="0 ${-wheel_base/2} 0" rpy="0 0 0"/>
-    </joint>
-
-    <link name="right_bracket_link">
-      <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-          <mesh filename="package://otto_description/meshes/bracket_right.stl"/>
-        </geometry>
-        <material name="otto_white"/>
-      </visual>
-      <inertial>
-        <mass value="0.005"/>
-        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
-      </inertial>
-    </link>
-
     <!-- Ball Caster (front support) -->
     <joint name="caster_joint" type="fixed">
       <parent link="base_link"/>
@@ -336,23 +295,23 @@
       <xacro:sphere_inertia m="0.007" r="${caster_radius}"/>
     </link>
 
-    <!-- Rear Mount -->
-    <joint name="rear_mount_joint" type="fixed">
+    <!-- Battery Cover (rear panel, includes HP logo) -->
+    <joint name="battery_cover_joint" type="fixed">
       <parent link="base_link"/>
-      <child link="rear_mount_link"/>
-      <origin xyz="0.003 0 0" rpy="0 0 0"/>
+      <child link="battery_cover_link"/>
+      <origin xyz="-0.0065 0 0.0197" rpy="0 0 0"/>
     </joint>
 
-    <link name="rear_mount_link">
+    <link name="battery_cover_link">
       <visual>
         <geometry>
-          <mesh filename="package://otto_description/meshes/rear_mount.stl"/>
+          <mesh filename="package://otto_description/meshes/battery_cover.stl"/>
         </geometry>
         <material name="otto_white"/>
       </visual>
       <inertial>
-        <mass value="0.005"/>
-        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+        <mass value="0.010"/>
+        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
       </inertial>
     </link>
 

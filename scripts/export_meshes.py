@@ -1,156 +1,149 @@
 #!/usr/bin/env python3
-"""Export simplified STL meshes from the HP Robots Otto Starter STEP file.
+"""Export STL meshes from the ZGX Otto STEP file.
 
 Usage:
     python3 scripts/export_meshes.py [/path/to/step/file]
 
-Default STEP path: ~/Downloads/HPRobots_Ottostarter(1).step
+Default STEP path: hardware/ZGX Otto.step  (relative to project root)
 
 Outputs to: ros2_ws/src/otto_description/meshes/
 Units are converted from mm (STEP) to meters (ROS convention).
+
+STEP coordinate system (ZGX Otto.step):
+    X  = transverse (left/right): +X = right side of robot
+    Y  = longitudinal: −Y = front of robot (face)
+    Z  = vertical: +Z = up
+    Wheel axle centre is at STEP Z = −10 mm (cz of all wheel solids)
+
+ROS coordinate system (REP-103):
+    X = forward, Y = left, Z = up
+    base_link origin = at axle height
+
+Coordinate transform from STEP centroid to ROS URDF origin:
+    ros_x = −step_cy * 0.001          (STEP −Y is forward = ROS +X)
+    ros_y = −step_cx * 0.001          (STEP −X is left    = ROS +Y)
+    ros_z = (step_cz − (−10)) * 0.001 (STEP Z shifted so axle = 0)
+
+Solid classification (determined from STEP inspection):
+    body (body.stl):
+        Solid 0:  Logo          14×14×1.6    cz= 2.2  (surface feature on Middle)
+        Solid 10: Top           72×72×19     cz=38.5
+        Solid 11: top cap disc  60×60×2      cz=47
+        Solid 12: top disc      21.6×21.6×2  cz=47
+        Solid 17: Middle        72×72×35.5   cz=14.25
+        Solid 18: Bottom        72×72×24     cz=−12
+
+    face (face.stl):
+        Solid  8: Lines sheet   60×60×0.2    cz=45.7
+        Solid  9: Lines sheet   60×60×0.2    cz=45.9
+        Solid 22: Face plate    66×11×36     cy=−37.5
+
+    wheel_right (wheel_right.stl):
+        Solids 2,3,4: cx=+41.65 (3 concentric rings, 8mm thick, 40–49mm diam)
+
+    wheel_left (wheel_left.stl):
+        Solids 5,6,7: cx=−41.65
+
+    caster (caster.stl):
+        Solid 20: ball          12×12×12     cz=−29
+        Solid 21: housing       15×22×9.5    cz=−28.75
+
+    battery_cover (battery_cover.stl):
+        Solid 1: panel          50×55×16.6   cy=+6.5 (rear of robot)
+
+    skipped:
+        Solid 13–16: ultrasonic transducer pins (tiny, decorative)
+        Solid 19:    PCB module (internal component)
 """
 
 import sys
 import os
+import struct
 import cadquery as cq
 
 # Paths
-DEFAULT_STEP = os.path.expanduser("~/Downloads/HPRobots_Ottostarter(1).step")
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+DEFAULT_STEP = os.path.join(PROJECT_ROOT, "hardware", "ZGX Otto.step")
 MESH_DIR = os.path.join(PROJECT_ROOT, "ros2_ws", "src", "otto_description", "meshes")
 
-# Scale factor: mm to meters
 MM_TO_M = 0.001
+STEP_AXLE_Z = -10.0  # STEP Z coordinate of wheel axle (mm)
 
 
-def identify_parts(solids):
-    """Identify parts by their bounding box dimensions (mm).
+def classify_solids(solids):
+    """Classify solids by bounding box into named mesh groups.
 
-    Based on inspection of the STEP file:
-      Solid 1  (72x72x24mm):    Bottom plate
-      Solid 9  (72x72x35.5mm):  Middle section
-      Solid 4  (72x72x19mm):    Top/lights
-      Solid 6  (62x11.4x32mm):  Face/ultrasonic mount
-      Solid 0  (29x22x14mm):    PCB (not exported as mesh)
-      Solid 2  (5.5x49x49mm):   Left wheel (o-ring tire)
-      Solid 10 (5.5x49x49mm):   Right wheel (o-ring tire)
-      Solid 5  (8x42x42mm):     Right servo bracket
-      Solid 7  (8x42x42mm):     Left servo bracket
-      Solid 3  (12x12x12mm):    Ball caster
-      Solid 8  (15x22x9.5mm):   Caster housing
+    Classification is deterministic based on inspection of ZGX Otto.step.
+    See module docstring for full solid list with measured dimensions.
     """
-    parts = {
-        "body_bottom": [],
-        "body_middle": [],
-        "body_top": [],
+    groups = {
+        "body": [],
         "face": [],
-        "wheel_left": [],
         "wheel_right": [],
-        "bracket_left": [],
-        "bracket_right": [],
-        "caster_ball": [],
-        "caster_housing": [],
-        "pcb": [],
+        "wheel_left": [],
+        "caster": [],
+        "battery_cover": [],
     }
 
     for i, solid in enumerate(solids):
         bb = solid.BoundingBox()
         w, d, h = bb.xlen, bb.ylen, bb.zlen
+        cx = (bb.xmin + bb.xmax) / 2
+        cy = (bb.ymin + bb.ymax) / 2
+        cz = (bb.zmin + bb.zmax) / 2
 
-        # Classify by size heuristics
-        if 70 < w < 75 and 70 < d < 75:
-            if h < 25:
-                parts["body_bottom"].append(solid)
-            elif h > 30:
-                parts["body_middle"].append(solid)
+        # Body: large square plates (Top, Middle, Bottom) + small top features + Logo
+        if (65 < w < 80 and 65 < d < 80) or (w < 65 and d < 65 and cz > 0 and h < 5 and w > 10):
+            groups["body"].append(solid)
+
+        # Face plate (front, cy < −30mm) + thin Lines sheets (h < 0.5mm, wide)
+        elif cy < -30 or (h < 0.5 and w > 50 and d > 50):
+            groups["face"].append(solid)
+
+        # Wheels: 8mm thick disc stacks (cx ≠ 0, d and h 38–51mm)
+        elif w <= 9 and min(d, h) > 38 and max(d, h) < 52:
+            if cx > 0:
+                groups["wheel_right"].append(solid)
             else:
-                parts["body_top"].append(solid)
-        elif 60 < w < 65 and d < 15:
-            parts["face"].append(solid)
-        elif w < 7 and 45 < d < 55 and 45 < h < 55:
-            # O-ring tire — distinguish left vs right by x position
-            cx = (bb.xmin + bb.xmax) / 2
-            if cx < 0:
-                parts["wheel_left"].append(solid)
-            else:
-                parts["wheel_right"].append(solid)
-        elif 6 < w < 10 and 40 < d < 45 and 40 < h < 45:
-            # Servo bracket — distinguish by x position
-            cx = (bb.xmin + bb.xmax) / 2
-            if cx < 0:
-                parts["bracket_left"].append(solid)
-            else:
-                parts["bracket_right"].append(solid)
-        elif 10 < w < 14 and 10 < d < 14 and 10 < h < 14:
-            parts["caster_ball"].append(solid)
-        elif 13 < w < 17 and 20 < d < 24:
-            parts["caster_housing"].append(solid)
-        elif 25 < w < 32 and 20 < d < 25:
-            parts["pcb"].append(solid)
+                groups["wheel_left"].append(solid)
+
+        # Caster: near bottom (cz < −20mm), small
+        elif cz < -20 and w < 20 and max(d, h) < 25:
+            groups["caster"].append(solid)
+
+        # Battery cover: medium panel at rear (cy > 0), not body size
+        elif cy > 0 and 40 < w < 60 and 40 < d < 65 and h < 25:
+            groups["battery_cover"].append(solid)
+
+        # Skip everything else (PCB, ultrasonic pins)
         else:
-            print(f"  Unclassified solid {i}: {w:.1f} x {d:.1f} x {h:.1f} mm")
+            print(f"  [skip] Solid {i}: {w:.1f}×{d:.1f}×{h:.1f} mm  cx={cx:.1f} cy={cy:.1f} cz={cz:.1f}")
 
-    return parts
+    return groups
 
 
-def export_mesh(solids, name, mesh_dir, tolerance=0.5):
-    """Export a list of CadQuery solids as a single STL file in meters."""
-    if not solids:
-        print(f"  Skipping {name}: no solids found")
-        return
-
-    # Combine multiple solids into one compound if needed
-    if len(solids) == 1:
-        shape = solids[0]
-    else:
-        shape = solids[0]
-        for s in solids[1:]:
-            shape = shape.fuse(s)
-
-    filepath = os.path.join(mesh_dir, f"{name}.stl")
-
-    # Export with tessellation tolerance (lower = more triangles)
-    cq.exporters.export(
-        cq.Workplane().add(shape),
-        filepath,
-        exportType="STL",
-        tolerance=tolerance,
-        angularTolerance=0.2,
-    )
-
-    # Read back and scale to meters
+def scale_stl(filepath):
+    """Scale all vertex coordinates in a binary STL from mm to meters in-place."""
     with open(filepath, "rb") as f:
         data = f.read()
 
-    # STL binary format: 80-byte header, 4-byte triangle count, then triangles
-    # Each triangle: 12 floats (normal + 3 vertices) + 2 byte attribute
-    # We need to scale all vertex coordinates by MM_TO_M
-    import struct
-
     if len(data) < 84:
-        print(f"  {name}: STL too small, skipping scale")
+        print(f"  WARNING: {filepath} too small to scale")
         return
 
-    header = data[:80]
     num_triangles = struct.unpack_from("<I", data, 80)[0]
-    print(f"  {name}: {num_triangles} triangles")
-
     offset = 84
     scaled = bytearray(data[:84])
+
     for _ in range(num_triangles):
-        # Normal vector (3 floats) — keep as-is (direction doesn't scale)
         nx, ny, nz = struct.unpack_from("<fff", data, offset)
         scaled.extend(struct.pack("<fff", nx, ny, nz))
         offset += 12
-
-        # 3 vertices — scale each by MM_TO_M
         for _ in range(3):
             x, y, z = struct.unpack_from("<fff", data, offset)
             scaled.extend(struct.pack("<fff", x * MM_TO_M, y * MM_TO_M, z * MM_TO_M))
             offset += 12
-
-        # Attribute byte count
         attr = struct.unpack_from("<H", data, offset)[0]
         scaled.extend(struct.pack("<H", attr))
         offset += 2
@@ -158,8 +151,56 @@ def export_mesh(solids, name, mesh_dir, tolerance=0.5):
     with open(filepath, "wb") as f:
         f.write(bytes(scaled))
 
-    file_size = os.path.getsize(filepath)
-    print(f"  {name}: saved ({file_size / 1024:.1f} KB)")
+
+def get_combined_bbox(solids):
+    """Return the combined bounding box of a list of solids."""
+    bb = solids[0].BoundingBox()
+    for s in solids[1:]:
+        b = s.BoundingBox()
+        bb.xmin = min(bb.xmin, b.xmin)
+        bb.xmax = max(bb.xmax, b.xmax)
+        bb.ymin = min(bb.ymin, b.ymin)
+        bb.ymax = max(bb.ymax, b.ymax)
+        bb.zmin = min(bb.zmin, b.zmin)
+        bb.zmax = max(bb.zmax, b.zmax)
+    return bb
+
+
+def export_mesh(solids, name, mesh_dir, tolerance=0.5, print_urdf_origin=False):
+    """Export a list of CadQuery solids as a single STL file in meters."""
+    if not solids:
+        print(f"  [skip] {name}: no matching solids")
+        return
+
+    if len(solids) == 1:
+        shape = solids[0]
+    else:
+        shape = cq.Compound.makeCompound(solids)
+
+    filepath = os.path.join(mesh_dir, f"{name}.stl")
+    cq.exporters.export(
+        cq.Workplane().add(shape),
+        filepath,
+        exportType="STL",
+        tolerance=tolerance,
+        angularTolerance=0.2,
+    )
+    scale_stl(filepath)
+
+    size_kb = os.path.getsize(filepath) / 1024
+
+    if print_urdf_origin:
+        bb = get_combined_bbox(solids)
+        step_cx = (bb.xmin + bb.xmax) / 2
+        step_cy = (bb.ymin + bb.ymax) / 2
+        step_cz = (bb.zmin + bb.zmax) / 2
+        # Convert STEP coords to ROS base_link frame
+        ros_x = -step_cy * MM_TO_M
+        ros_y = -step_cx * MM_TO_M
+        ros_z = (step_cz - STEP_AXLE_Z) * MM_TO_M
+        print(f"  {name}: {size_kb:.1f} KB  →  URDF origin xyz=\"{ros_x:.4f} {ros_y:.4f} {ros_z:.4f}\"")
+    else:
+        print(f"  {name}: {size_kb:.1f} KB")
 
 
 def main():
@@ -171,34 +212,23 @@ def main():
 
     os.makedirs(MESH_DIR, exist_ok=True)
 
-    print(f"Loading STEP file: {step_path}")
+    print(f"Loading: {step_path}")
     result = cq.importers.importStep(step_path)
-    solids = list(result.solids())
-    print(f"Found {len(solids)} solids")
+    solids = list(result.solids().vals())
+    print(f"Found {len(solids)} solids\n")
 
-    print("\nIdentifying parts...")
-    parts = identify_parts(solids)
+    print("Classifying...")
+    groups = classify_solids(solids)
+    print()
 
-    print("\nExporting meshes (mm → meters)...")
-
-    # Body: combine bottom + middle + top into single mesh
-    body_solids = parts["body_bottom"] + parts["body_middle"] + parts["body_top"]
-    export_mesh(body_solids, "body", MESH_DIR, tolerance=0.5)
-
-    # Face (ultrasonic mount)
-    export_mesh(parts["face"], "face", MESH_DIR, tolerance=0.3)
-
-    # Wheels (export one, reuse for both sides in URDF with mirroring)
-    wheel_solids = parts["wheel_left"] or parts["wheel_right"]
-    export_mesh(wheel_solids, "wheel", MESH_DIR, tolerance=0.2)
-
-    # Caster
-    caster_solids = parts["caster_ball"] + parts["caster_housing"]
-    export_mesh(caster_solids, "caster", MESH_DIR, tolerance=0.3)
-
-    # Brackets (export one, reuse)
-    bracket_solids = parts["bracket_left"] or parts["bracket_right"]
-    export_mesh(bracket_solids, "bracket", MESH_DIR, tolerance=0.3)
+    print("Exporting meshes (mm → meters)...")
+    export_mesh(groups["body"],          "body",          MESH_DIR, tolerance=0.5)
+    export_mesh(groups["face"],          "face",          MESH_DIR, tolerance=0.3)
+    export_mesh(groups["wheel_left"],    "wheel_left",    MESH_DIR, tolerance=0.2)
+    export_mesh(groups["wheel_right"],   "wheel_right",   MESH_DIR, tolerance=0.2)
+    export_mesh(groups["caster"],        "caster",        MESH_DIR, tolerance=0.3)
+    export_mesh(groups["battery_cover"], "battery_cover", MESH_DIR, tolerance=0.3,
+                print_urdf_origin=True)
 
     print(f"\nDone! Meshes written to: {MESH_DIR}")
 
