@@ -24,8 +24,8 @@ def generate_launch_description():
         description='Robot variant: wheeled or biped')
 
     robot_description = ParameterValue(
-        Command(['xacro ', urdf_file,
-                 ' variant:=', LaunchConfiguration('variant')]),
+        Command(['xacro "', urdf_file,
+                 '" variant:=', LaunchConfiguration('variant')]),
         value_type=str)
 
     robot_state_pub = Node(

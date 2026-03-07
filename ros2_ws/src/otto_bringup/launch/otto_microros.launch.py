@@ -35,8 +35,8 @@ def generate_launch_description():
 
     robot_description = ParameterValue(
         Command([
-            'xacro ', urdf_file,
-            ' variant:=', LaunchConfiguration('variant')]),
+            'xacro "', urdf_file,
+            '" variant:=', LaunchConfiguration('variant')]),
         value_type=str)
 
     # micro-ROS agent via Docker (default)

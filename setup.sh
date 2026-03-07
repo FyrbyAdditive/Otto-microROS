@@ -56,7 +56,8 @@ sudo apt-get install -y \
     ros-jazzy-xacro \
     ros-jazzy-rviz2 \
     ros-jazzy-tf2-ros \
-    python3-colcon-common-extensions
+    python3-colcon-common-extensions \
+    xterm
 
 # micro-ROS agent: try apt first, then build the eProsima standalone agent
 if apt-cache show ros-jazzy-micro-ros-agent >/dev/null 2>&1; then
@@ -71,6 +72,7 @@ elif ! command -v MicroXRCEAgent >/dev/null 2>&1; then
     cmake -B "$AGENT_SRC/build" "$AGENT_SRC" -DCMAKE_BUILD_TYPE=Release
     cmake --build "$AGENT_SRC/build" -j"$(nproc)"
     sudo cmake --install "$AGENT_SRC/build"
+    sudo ldconfig
     info "MicroXRCEAgent installed to /usr/local/bin."
 else
     info "MicroXRCEAgent already installed."
