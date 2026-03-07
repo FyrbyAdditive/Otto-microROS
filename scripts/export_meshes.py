@@ -42,7 +42,9 @@ Named STEP groups → STL files:
     'Ballcaster'                              → caster.stl       (otto_dark)
     'LED Ring' large solid (PCB)             → led_ring.stl     (blue)
     'LED Ring' small solids (13 pads)        → led_pads.stl     (white, coarse tol)
-    'Ultrasonic Distance Sensor'              → ultrasonic.stl   (sensor_green)
+    'Ultrasonic Distance Sensor' board (xlen>40) → ultrasonic_board.stl  (blue)
+    'Ultrasonic Distance Sensor' plug  (xlen>8,ylen>3) → ultrasonic_plug.stl   (white)
+    'Ultrasonic Distance Sensor' pins  (rest)    → ultrasonic_metal.stl  (silver, coarse)
     'Line Sensor Left'                            → line_sensor_left.stl  (pcb_green)
     'Line Sensor Right'                           → line_sensor_right.stl (pcb_green)
 
@@ -515,11 +517,23 @@ def main():
         print()
 
     # ── ULTRASONIC SENSOR: 'Ultrasonic Distance Sensor' ──────────────
+    # board: large flat PCB (xlen > 40mm) → blue
+    # plug:  connector housing on rear face (xlen 8-15, ylen > 3) → white
+    # metal: header pins (rest) → silver, coarse tessellation
 
-    ultrasonic = name_to_solids.get("Ultrasonic Distance Sensor", [])
-    if ultrasonic:
-        jx, jy, jz = group_centroid(ultrasonic)
-        export_stl(ultrasonic, "ultrasonic", jx, jy, jz, axle_y, axle_z)
+    us_all   = name_to_solids.get("Ultrasonic Distance Sensor", [])
+    us_board = [s for s in us_all if _bb(s).xlen > 40]
+    us_plug  = [s for s in us_all if 8 < _bb(s).xlen <= 40 and _bb(s).ylen > 3]
+    us_metal = [s for s in us_all if s not in us_board and s not in us_plug]
+
+    if us_board:
+        jx, jy, jz = group_centroid(us_board)
+        export_stl(us_board, "ultrasonic_board", jx, jy, jz, axle_y, axle_z,
+                   label="board, blue")
+        export_stl(us_plug,  "ultrasonic_plug",  jx, jy, jz, axle_y, axle_z,
+                   label="plug, white")
+        export_stl(us_metal, "ultrasonic_metal", jx, jy, jz, axle_y, axle_z,
+                   label="pins, silver, coarse", tol=0.5, ang=0.2)
 
     # ── LINE SENSORS ─────────────────────────────────────────────────
     # With det=+1 transform (ros_y = +step_x):
