@@ -40,7 +40,8 @@ Named STEP groups → STL files:
     'Wheels' cx>0 dia>50mm                    → wheel_right_tire.stl (rubber_black)
     'Wheels' cx>0 dia≤50mm                    → wheel_right_rim.stl  (dark_grey)
     'Ballcaster'                              → caster.stl       (otto_dark)
-    'LED Ring' large solid (PCB)             → led_ring.stl     (pcb_green)
+    'LED Ring' large solid (PCB)             → led_ring.stl     (blue)
+    'LED Ring' small solids (13 pads)        → led_pads.stl     (white, coarse tol)
     'Ultrasonic Distance Sensor'              → ultrasonic.stl   (sensor_green)
     'Line Sensor Left'                            → line_sensor_left.stl  (pcb_green)
     'Line Sensor Right'                           → line_sensor_right.stl (pcb_green)
@@ -240,13 +241,14 @@ def transform_stl(filepath, jx, jy, jz):
 
 # ── Export one STL group ───────────────────────────────────────────────
 
-def export_stl(solids, name, jx, jy, jz, axle_y, axle_z, label=""):
+def export_stl(solids, name, jx, jy, jz, axle_y, axle_z, label="", tol=None, ang=None):
     """Tessellate solids → <name>.stl, transform to ROS space.
 
     jx, jy, jz  — reference origin in STEP space (mm); after transform,
                    this point lands at (0,0,0) in the STL file.
     axle_y, axle_z — wheel axle constants for computing ROS joint xyz.
     label       — optional extra info printed on the summary line.
+    tol, ang    — tessellation tolerance overrides (defaults: TOL, ANG).
     """
     if not solids:
         print(f"  [skip] {name}: no solids")
@@ -256,7 +258,9 @@ def export_stl(solids, name, jx, jy, jz, axle_y, axle_z, label=""):
     shape = solids[0] if len(solids) == 1 else cq.Compound.makeCompound(solids)
     cq.exporters.export(
         cq.Workplane().add(shape), filepath,
-        exportType="STL", tolerance=TOL, angularTolerance=ANG)
+        exportType="STL",
+        tolerance=tol if tol is not None else TOL,
+        angularTolerance=ang if ang is not None else ANG)
 
     transform_stl(filepath, jx, jy, jz)
 
@@ -484,20 +488,25 @@ def main():
     # LED pads: small solids → centroid positions only (no STL)
 
     led_all  = name_to_solids.get("LED Ring", [])
+    # No dedup here — we need all 13 pad instances at distinct world positions
     led_pcb  = [s for s in led_all if max(_bb(s).xlen, _bb(s).ylen) > 20]
     led_pads = [s for s in led_all if max(_bb(s).xlen, _bb(s).ylen) <= 20]
 
+    pcb_jx = pcb_jy = pcb_jz = None
     if led_pcb:
-        jx, jy, jz = group_centroid(led_pcb)
-        export_stl(led_pcb, "led_ring", jx, jy, jz, axle_y, axle_z)
+        pcb_jx, pcb_jy, pcb_jz = group_centroid(led_pcb)
+        export_stl(led_pcb, "led_ring", pcb_jx, pcb_jy, pcb_jz, axle_y, axle_z)
 
-    if led_pads:
+    if led_pads and pcb_jx is not None:
+        # Export with coarse tessellation — pads are decorative, fine detail unnecessary
+        export_stl(led_pads, "led_pads", pcb_jx, pcb_jy, pcb_jz, axle_y, axle_z,
+                   label=f"{len(led_pads)} pads, coarse tol", tol=0.5, ang=0.2)
         print(f"\nLED pad positions ({len(led_pads)} LEDs):")
         led_data = []
         for s in led_pads:
             lx, ly, lz = group_centroid([s])
             rx = -(ly - axle_y) * MM_TO_M
-            ry = -lx             * MM_TO_M
+            ry = +lx             * MM_TO_M
             rz =  (lz - axle_z) * MM_TO_M
             led_data.append((rx, ry, rz))
         led_data.sort(key=lambda t: math.atan2(t[1], t[0]))

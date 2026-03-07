@@ -339,7 +339,7 @@
       <geometry>
         <mesh filename="package://otto_description/meshes/led_ring.stl"/>
       </geometry>
-      <material name="pcb_green"/>
+      <material name="led_ring_pcb_mat"><color rgba="0.05 0.20 0.80 1.0"/></material>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -353,6 +353,21 @@
   <joint name="led_ring_joint" type="fixed">
     <parent link="base_link"/>
     <child  link="led_ring_link"/>
+    <origin xyz="0.0231 -0.0001 0.0516" rpy="0 0 0"/>
+  </joint>
+
+  <link name="led_pads_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://otto_description/meshes/led_pads.stl"/>
+      </geometry>
+      <material name="led_pads_mat"><color rgba="0.95 0.95 0.95 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="led_pads_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="led_pads_link"/>
     <origin xyz="0.0231 -0.0001 0.0516" rpy="0 0 0"/>
   </joint>
 
