@@ -122,13 +122,13 @@
       </geometry>
       <material name="otto_dark_grey"/>
     </visual>
-    <!-- Top: dome and cap sections — white -->
+    <!-- Top: dome and cap sections — black -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/body_top.stl"/>
       </geometry>
-      <material name="otto_white"/>
+      <material name="otto_black"/>
     </visual>
     <!-- Top: logo line engravings — black -->
     <visual>
