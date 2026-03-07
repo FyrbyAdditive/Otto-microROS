@@ -335,43 +335,46 @@ def main():
 
     # ── WHEELS ────────────────────────────────────────────────────────
     # Three bodies per wheel:
-    #   inner hub  ≈ 40.6 mm diameter (dia ≤ 50)  → rim
-    #   outer rim  ≈ 45.0 mm diameter (dia ≤ 50)  → rim
-    #   tyre       ≈ 53.0 mm diameter (dia > 50)  → tire
-    # STEP cx < 0 = robot left; cx > 0 = robot right.
+    #   inner hub  ≈ 40.6 mm diameter (dia ≤ 43)  → hub  (black)
+    #   middle rim ≈ 45.0 mm diameter (43 < dia ≤ 46) → rim (grey)
+    #   outer tyre ≈ 49.0 mm diameter (dia > 46)  → tire (black)
+    # STEP cx > 0 = robot left (det=+1 transform); cx < 0 = robot right.
 
-    left_tire  = []
-    left_rim   = []
-    right_tire = []
-    right_rim  = []
+    left_tire  = []; left_rim  = []; left_hub  = []
+    right_tire = []; right_rim = []; right_hub = []
 
+    seen_wheel = set()
     for s in wheel_all:
         bb  = _bb(s)
         cx  = (bb.xmin + bb.xmax) / 2
-        # Diameter = max cross-section perpendicular to the axle (Y or Z, not X)
         dia = max(bb.ylen, bb.zlen)
-        # Outer tire ≈ 49 mm, rim/hub ≤ 45 mm — threshold at 46 mm
-        is_tire = dia > 46
-        # With det=+1 transform: STEP cx > 0 → ros_y = +cx > 0 = ROS left
+        key = (round(cx, 1), round(dia, 1))
+        if key in seen_wheel:
+            continue
+        seen_wheel.add(key)
         if cx > 0:
-            (left_tire  if is_tire else left_rim).append(s)
+            if   dia > 46:  left_tire.append(s)
+            elif dia > 43:  left_rim.append(s)
+            else:           left_hub.append(s)
         else:
-            (right_tire if is_tire else right_rim).append(s)
+            if   dia > 46:  right_tire.append(s)
+            elif dia > 43:  right_rim.append(s)
+            else:           right_hub.append(s)
 
-    print(f"  Wheels: L tire={len(left_tire)} rim={len(left_rim)}  "
-          f"R tire={len(right_tire)} rim={len(right_rim)}")
+    print(f"  Wheels: L tire={len(left_tire)} rim={len(left_rim)} hub={len(left_hub)}  "
+          f"R tire={len(right_tire)} rim={len(right_rim)} hub={len(right_hub)}")
 
-    for side, tire, rim in (("left", left_tire, left_rim),
-                             ("right", right_tire, right_rim)):
-        all_side = tire + rim
+    for side, tire, rim, hub in (("left",  left_tire,  left_rim,  left_hub),
+                                  ("right", right_tire, right_rim, right_hub)):
+        all_side = tire + rim + hub
         if not all_side:
             continue
-        # Shared reference = axle midpoint for this side (correct rotation centre)
         side_x0 = min(_bb(s).xmin for s in all_side)
         side_x1 = max(_bb(s).xmax for s in all_side)
         side_cx = (side_x0 + side_x1) / 2
         export_stl(tire, f"wheel_{side}_tire", side_cx, axle_y, axle_z, axle_y, axle_z)
         export_stl(rim,  f"wheel_{side}_rim",  side_cx, axle_y, axle_z, axle_y, axle_z)
+        export_stl(hub,  f"wheel_{side}_hub",  side_cx, axle_y, axle_z, axle_y, axle_z)
 
     # ── BODY SHELL: 'Middle' ──────────────────────────────────────────
     # Main cylinder: both X and Y span > 60 mm

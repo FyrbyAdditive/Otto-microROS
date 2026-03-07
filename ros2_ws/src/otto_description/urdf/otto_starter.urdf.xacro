@@ -235,6 +235,18 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
+  <link name="left_hub_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/wheel_left_hub.stl"/></geometry>
+      <material name="left_hub_mat"><color rgba="0.05 0.05 0.05 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="left_hub_joint" type="fixed">
+    <parent link="left_wheel_link"/><child link="left_hub_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
   <link name="right_wheel_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -257,6 +269,18 @@
   </link>
   <joint name="right_rim_joint" type="fixed">
     <parent link="right_wheel_link"/><child link="right_rim_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="right_hub_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/wheel_right_hub.stl"/></geometry>
+      <material name="right_hub_mat"><color rgba="0.05 0.05 0.05 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="right_hub_joint" type="fixed">
+    <parent link="right_wheel_link"/><child link="right_hub_link"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
