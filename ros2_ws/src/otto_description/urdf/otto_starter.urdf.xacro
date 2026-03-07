@@ -24,7 +24,7 @@
   <!-- ============================== -->
   <xacro:property name="wheel_radius" value="0.0245"/>
   <xacro:property name="wheel_width" value="0.0055"/>
-  <xacro:property name="wheel_base" value="0.0814"/>
+  <xacro:property name="wheel_base" value="0.0834"/>  <!-- 2 × 41.7 mm from STEP -->
   <xacro:property name="body_width" value="0.075"/>
   <xacro:property name="body_depth" value="0.072"/>
   <xacro:property name="body_height" value="0.072"/>
@@ -33,13 +33,13 @@
   <xacro:property name="head_depth" value="0.016"/>
   <xacro:property name="head_height" value="0.032"/>
 
-  <!-- Positions relative to base_link (at axle height, from STEP CAD) -->
-  <xacro:property name="body_offset_x" value="0.0231"/>  <!-- body center forward of axle -->
-  <xacro:property name="body_offset_z" value="0.0252"/>   <!-- body center above axle -->
-  <xacro:property name="face_offset_x" value="0.0607"/>   <!-- face forward of axle -->
-  <xacro:property name="face_offset_z" value="0.0262"/>   <!-- face above axle -->
-  <xacro:property name="caster_offset_x" value="0.0431"/> <!-- caster forward of axle -->
-  <xacro:property name="caster_offset_z" value="-0.0187"/><!-- caster below axle -->
+  <!-- Positions relative to base_link (at axle centre, from export_meshes.py output) -->
+  <xacro:property name="body_offset_x" value="0.0230"/>   <!-- body centroid forward of axle -->
+  <xacro:property name="body_offset_z" value="0.0220"/>   <!-- body centroid above axle -->
+  <xacro:property name="face_offset_x" value="0.0605"/>   <!-- face centroid forward of axle -->
+  <xacro:property name="face_offset_z" value="0.0260"/>   <!-- face centroid above axle -->
+  <xacro:property name="caster_offset_x" value="0.0430"/> <!-- caster centroid forward of axle -->
+  <xacro:property name="caster_offset_z" value="-0.0190"/><!-- caster centroid below axle -->
 
   <!-- ============================== -->
   <!-- Material Definitions            -->
@@ -110,6 +110,7 @@
   <link name="base_link">
     <visual>
       <origin xyz="${body_offset_x} 0 ${body_offset_z}" rpy="0 0 0"/>
+      <!-- mesh is centered at its own centroid; this origin places it in base_link -->
       <geometry>
         <mesh filename="package://otto_description/meshes/body.stl"/>
       </geometry>
@@ -299,7 +300,7 @@
     <joint name="battery_cover_joint" type="fixed">
       <parent link="base_link"/>
       <child link="battery_cover_link"/>
-      <origin xyz="-0.0065 0 0.0197" rpy="0 0 0"/>
+      <origin xyz="0.0165 0 0.0197" rpy="0 0 0"/>
     </joint>
 
     <link name="battery_cover_link">

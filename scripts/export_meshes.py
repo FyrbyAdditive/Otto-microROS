@@ -68,7 +68,9 @@ DEFAULT_STEP = os.path.join(PROJECT_ROOT, "hardware", "ZGX Otto.step")
 MESH_DIR = os.path.join(PROJECT_ROOT, "ros2_ws", "src", "otto_description", "meshes")
 
 MM_TO_M = 0.001
-STEP_AXLE_Z = -10.0  # STEP Z coordinate of wheel axle (mm)
+STEP_AXLE_Z = -10.0  # STEP Z coordinate of wheel axle centre (mm)
+STEP_AXLE_Y =  23.0  # STEP Y coordinate of wheel axle centre (mm)
+                      # = wheel centroid STEP-Y; defines base_link X origin in STEP space
 
 
 def classify_solids(solids):
@@ -123,33 +125,44 @@ def classify_solids(solids):
     return groups
 
 
-def scale_stl(filepath):
-    """Scale all vertex coordinates in a binary STL from mm to meters in-place."""
+def transform_stl(filepath, jx, jy, jz):
+    """Transform binary STL from STEP mm-space to ROS meter-space, centered at joint origin.
+
+    Applies the STEP→ROS axis remap and translates vertices so the mesh centroid
+    is at the link frame origin.  Joint origin (jx, jy, jz) is in STEP mm.
+
+    Axis mapping:  STEP(x,y,z) - joint  →  ROS(-y, -x, z) * MM_TO_M
+    Normals:       same rotation, negated to preserve outward-pointing direction
+                   (the STEP→ROS rotation has det = −1, so winding flips).
+    """
     with open(filepath, "rb") as f:
         data = f.read()
 
     if len(data) < 84:
-        print(f"  WARNING: {filepath} too small to scale")
+        print(f"  WARNING: {filepath} too small to transform")
         return
 
     num_triangles = struct.unpack_from("<I", data, 80)[0]
     offset = 84
-    scaled = bytearray(data[:84])
+    out = bytearray(data[:84])
 
     for _ in range(num_triangles):
         nx, ny, nz = struct.unpack_from("<fff", data, offset)
-        scaled.extend(struct.pack("<fff", nx, ny, nz))
+        # Normal: rotate (STEP→ROS) then negate to restore outward direction
+        out.extend(struct.pack("<fff", ny, nx, -nz))
         offset += 12
         for _ in range(3):
-            x, y, z = struct.unpack_from("<fff", data, offset)
-            scaled.extend(struct.pack("<fff", x * MM_TO_M, y * MM_TO_M, z * MM_TO_M))
+            vx, vy, vz = struct.unpack_from("<fff", data, offset)
+            rx = -(vy - jy) * MM_TO_M   # ROS +X = STEP −Y
+            ry = -(vx - jx) * MM_TO_M   # ROS +Y = STEP −X
+            rz =  (vz - jz) * MM_TO_M   # ROS +Z = STEP +Z (relative to joint)
+            out.extend(struct.pack("<fff", rx, ry, rz))
             offset += 12
-        attr = struct.unpack_from("<H", data, offset)[0]
-        scaled.extend(struct.pack("<H", attr))
+        out.extend(struct.pack("<H", struct.unpack_from("<H", data, offset)[0]))
         offset += 2
 
     with open(filepath, "wb") as f:
-        f.write(bytes(scaled))
+        f.write(bytes(out))
 
 
 def get_combined_bbox(solids):
@@ -166,16 +179,17 @@ def get_combined_bbox(solids):
     return bb
 
 
-def export_mesh(solids, name, mesh_dir, tolerance=0.5, print_urdf_origin=False):
-    """Export a list of CadQuery solids as a single STL file in meters."""
+def export_mesh(solids, name, mesh_dir, tolerance=0.5):
+    """Export a list of CadQuery solids as a single STL in ROS meter-space.
+
+    The mesh is centered at the solid group's bounding-box centroid.
+    The printed URDF joint origin places that centroid correctly in base_link.
+    """
     if not solids:
         print(f"  [skip] {name}: no matching solids")
         return
 
-    if len(solids) == 1:
-        shape = solids[0]
-    else:
-        shape = cq.Compound.makeCompound(solids)
+    shape = solids[0] if len(solids) == 1 else cq.Compound.makeCompound(solids)
 
     filepath = os.path.join(mesh_dir, f"{name}.stl")
     cq.exporters.export(
@@ -185,22 +199,20 @@ def export_mesh(solids, name, mesh_dir, tolerance=0.5, print_urdf_origin=False):
         tolerance=tolerance,
         angularTolerance=0.2,
     )
-    scale_stl(filepath)
+
+    bb = get_combined_bbox(solids)
+    jx = (bb.xmin + bb.xmax) / 2
+    jy = (bb.ymin + bb.ymax) / 2
+    jz = (bb.zmin + bb.zmax) / 2
+    transform_stl(filepath, jx, jy, jz)
+
+    # URDF joint origin in ROS base_link frame (base_link = STEP axle centre)
+    ros_x = -(jy - STEP_AXLE_Y) * MM_TO_M
+    ros_y = -jx * MM_TO_M
+    ros_z = (jz - STEP_AXLE_Z) * MM_TO_M
 
     size_kb = os.path.getsize(filepath) / 1024
-
-    if print_urdf_origin:
-        bb = get_combined_bbox(solids)
-        step_cx = (bb.xmin + bb.xmax) / 2
-        step_cy = (bb.ymin + bb.ymax) / 2
-        step_cz = (bb.zmin + bb.zmax) / 2
-        # Convert STEP coords to ROS base_link frame
-        ros_x = -step_cy * MM_TO_M
-        ros_y = -step_cx * MM_TO_M
-        ros_z = (step_cz - STEP_AXLE_Z) * MM_TO_M
-        print(f"  {name}: {size_kb:.1f} KB  →  URDF origin xyz=\"{ros_x:.4f} {ros_y:.4f} {ros_z:.4f}\"")
-    else:
-        print(f"  {name}: {size_kb:.1f} KB")
+    print(f"  {name}: {size_kb:.1f} KB  →  joint xyz=\"{ros_x:.4f} {ros_y:.4f} {ros_z:.4f}\"")
 
 
 def main():
@@ -227,8 +239,7 @@ def main():
     export_mesh(groups["wheel_left"],    "wheel_left",    MESH_DIR, tolerance=0.2)
     export_mesh(groups["wheel_right"],   "wheel_right",   MESH_DIR, tolerance=0.2)
     export_mesh(groups["caster"],        "caster",        MESH_DIR, tolerance=0.3)
-    export_mesh(groups["battery_cover"], "battery_cover", MESH_DIR, tolerance=0.3,
-                print_urdf_origin=True)
+    export_mesh(groups["battery_cover"], "battery_cover", MESH_DIR, tolerance=0.3)
 
     print(f"\nDone! Meshes written to: {MESH_DIR}")
 
