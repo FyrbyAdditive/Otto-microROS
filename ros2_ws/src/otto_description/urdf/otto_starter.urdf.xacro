@@ -256,29 +256,42 @@
   </joint>
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
-  <!--  Caster (front ball caster)                                        -->
+  <!--  Caster (front ball caster) — bracket grey, ball silver           -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <link name="caster_link">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://otto_description/meshes/caster.stl"/>
-      </geometry>
-      <material name="caster_mat"><color rgba="0.10 0.10 0.10 1.0"/></material>
-    </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.006"/>
-      </geometry>
+      <geometry><sphere radius="0.006"/></geometry>
     </collision>
     <xacro:box_inertia m="${caster_mass}" x="0.012" y="0.012" z="0.012"/>
   </link>
-
   <joint name="caster_joint" type="fixed">
-    <parent link="base_link"/>
-    <child  link="caster_link"/>
+    <parent link="base_link"/><child link="caster_link"/>
     <origin xyz="0.0430 0.0000 -0.0190" rpy="0 0 0"/>
+  </joint>
+
+  <link name="caster_bracket_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/caster_bracket.stl"/></geometry>
+      <material name="caster_bracket_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="caster_bracket_joint" type="fixed">
+    <parent link="caster_link"/><child link="caster_bracket_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="caster_ball_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/caster_ball.stl"/></geometry>
+      <material name="caster_ball_mat"><color rgba="0.80 0.80 0.85 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="caster_ball_joint" type="fixed">
+    <parent link="caster_link"/><child link="caster_ball_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
