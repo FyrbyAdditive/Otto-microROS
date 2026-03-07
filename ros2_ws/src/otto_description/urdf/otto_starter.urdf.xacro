@@ -445,6 +445,18 @@
     <origin xyz="0.0541 0.0000 0.0260" rpy="0 0 0"/>
   </joint>
 
+  <link name="ultrasonic_cans_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/ultrasonic_cans.stl"/></geometry>
+      <material name="us_cans_mat"><color rgba="0.75 0.75 0.78 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="ultrasonic_cans_joint" type="fixed">
+    <parent link="base_link"/><child link="ultrasonic_cans_link"/>
+    <origin xyz="0.0541 0.0000 0.0260" rpy="0 0 0"/>
+  </joint>
+
   <!-- Sensor ray origin — midpoint between transducers, pointing forward -->
   <link name="ultrasonic_sensor_frame"/>
   <joint name="ultrasonic_sensor_joint" type="fixed">
