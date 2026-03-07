@@ -79,7 +79,9 @@ fi
 # ── 3. Build the ROS2 workspace ───────────────────────────────────────────────
 info "Building the ROS2 workspace..."
 cd "$WS_DIR"
-colcon build --symlink-install
+# Prepend system Python to PATH so colcon/CMake don't pick up conda's Python,
+# which lacks catkin_pkg and other ROS2 build dependencies.
+PATH=/usr/bin:/usr/local/bin:$PATH colcon build --symlink-install
 cd "$SCRIPT_DIR"
 
 # ── 4. Patch ~/.bashrc ────────────────────────────────────────────────────────
