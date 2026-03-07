@@ -5,158 +5,92 @@ Usage:
     python3 scripts/export_meshes.py [/path/to/step/file]
 
 Default STEP path: hardware/ZGX Otto.step  (relative to project root)
+Output:           ros2_ws/src/otto_description/meshes/
 
-Outputs to: ros2_ws/src/otto_description/meshes/
-Units are converted from mm (STEP) to meters (ROS convention).
+STEP coordinate system (Shapr3D export, ZGX Otto.step):
+    +X = right of robot,  -X = left
+    -Y = front of robot,  +Y = rear
+    +Z = up
+    Model built around origin; lowest point of wheels = ground plane.
 
-STEP coordinate system (ZGX Otto.step):
-    X  = transverse (left/right): +X = right side of robot
-    Y  = longitudinal: −Y = front of robot (face)
-    Z  = vertical: +Z = up
-    Wheel axle centre is at STEP Z = −10 mm (cz of all wheel solids)
-
-ROS coordinate system (REP-103):
+ROS REP-103:
     X = forward, Y = left, Z = up
-    base_link origin = at axle height
+    base_footprint at ground (Z = 0)
+    base_link     at wheel axle height
 
-Coordinate transform from STEP centroid to ROS URDF origin:
-    ros_x = −step_cy * 0.001          (STEP −Y is forward = ROS +X)
-    ros_y = −step_cx * 0.001          (STEP −X is left    = ROS +Y)
-    ros_z = (step_cz − (−10)) * 0.001 (STEP Z shifted so axle = 0)
+Vertex transform applied to every STL (STEP mm → ROS m):
+    ros_x = -(step_y - AXLE_Y) * MM_TO_M
+    ros_y = -step_x             * MM_TO_M
+    ros_z = (step_z  - AXLE_Z) * MM_TO_M
 
-Solid classification (determined from STEP inspection):
-    body (body.stl):
-        Solid 0:  Logo          14×14×1.6    cz= 2.2  (surface feature on Middle)
-        Solid 10: Top           72×72×19     cz=38.5
-        Solid 11: top cap disc  60×60×2      cz=47
-        Solid 12: top disc      21.6×21.6×2  cz=47
-        Solid 17: Middle        72×72×35.5   cz=14.25
-        Solid 18: Bottom        72×72×24     cz=−12
+AXLE_Y and AXLE_Z are computed automatically from the wheel geometry.
 
-    face (face.stl):
-        Solid  8: Lines sheet   60×60×0.2    cz=45.7
-        Solid  9: Lines sheet   60×60×0.2    cz=45.9
-        Solid 22: Face plate    66×11×36     cy=−37.5
+Each exported STL is centred at the part bounding-box centroid (= joint
+origin in URDF).  Wheels are centred at the axle midpoint so continuous
+joints rotate them correctly.
 
-    wheel_right (wheel_right.stl):
-        Solids 2,3,4: cx=+41.65 (3 concentric rings, 8mm thick, 40–49mm diam)
-
-    wheel_left (wheel_left.stl):
-        Solids 5,6,7: cx=−41.65
-
-    caster (caster.stl):
-        Solid 20: ball          12×12×12     cz=−29
-        Solid 21: housing       15×22×9.5    cz=−28.75
-
-    battery_cover (battery_cover.stl):
-        Solid 1: panel          50×55×16.6   cy=+6.5 (rear of robot)
-
-    skipped:
-        Solid 13–16: ultrasonic transducer pins (tiny, decorative)
-        Solid 19:    PCB module (internal component)
+Part groups → STL files (classification by STEP solid bounding box):
+    body.stl          : large shell solids (≥50 mm in 2 axes)
+    wheel_left.stl    : disc solids with cx < 0
+    wheel_right.stl   : disc solids with cx > 0
+    caster.stl        : small spherical/cylindrical solids near bottom
+    led_ring.stl      : ring-shaped solid near top centre
+    ultrasonic.stl    : rectangular solid near front top
+    line_sensor_left  : small PCB solid near bottom-left
+    line_sensor_right : small PCB solid near bottom-right
+    (LED individual positions are computed from their bounding boxes
+     and printed for copy-paste into the URDF LED frames.)
 """
 
 import sys
 import os
 import struct
+
 import cadquery as cq
 
-# Paths
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 DEFAULT_STEP = os.path.join(PROJECT_ROOT, "hardware", "ZGX Otto.step")
-MESH_DIR = os.path.join(PROJECT_ROOT, "ros2_ws", "src", "otto_description", "meshes")
-
+MESH_DIR     = os.path.join(PROJECT_ROOT, "ros2_ws", "src",
+                             "otto_description", "meshes")
 MM_TO_M = 0.001
-STEP_AXLE_Z = -10.0  # STEP Z coordinate of wheel axle centre (mm)
-STEP_AXLE_Y =  23.0  # STEP Y coordinate of wheel axle centre (mm)
-                      # = wheel centroid STEP-Y; defines base_link X origin in STEP space
 
 
-def classify_solids(solids):
-    """Classify solids by bounding box into named mesh groups.
+# ── STL coordinate transform ───────────────────────────────────────────
 
-    Classification is deterministic based on inspection of ZGX Otto.step.
-    See module docstring for full solid list with measured dimensions.
-    """
-    groups = {
-        "body": [],
-        "face": [],
-        "wheel_right": [],
-        "wheel_left": [],
-        "caster": [],
-        "battery_cover": [],
-    }
+def transform_stl(filepath, jx, jy, jz, axle_y, axle_z):
+    """Transform a binary STL from STEP mm-space to ROS m-space.
 
-    for i, solid in enumerate(solids):
-        bb = solid.BoundingBox()
-        w, d, h = bb.xlen, bb.ylen, bb.zlen
-        cx = (bb.xmin + bb.xmax) / 2
-        cy = (bb.ymin + bb.ymax) / 2
-        cz = (bb.zmin + bb.zmax) / 2
+    Centres the mesh at the joint origin (jx, jy, jz) in STEP space,
+    then applies the STEP→ROS axis remap.  After transformation, the STL
+    origin corresponds to the link frame origin in the URDF so the visual
+    origin can be left at (0 0 0).
 
-        # Body: large square plates (Top, Middle, Bottom) + small top features + Logo
-        if (65 < w < 80 and 65 < d < 80) or (w < 65 and d < 65 and cz > 0 and h < 5 and w > 10):
-            groups["body"].append(solid)
-
-        # Face plate (front, cy < −30mm) + thin Lines sheets (h < 0.5mm, wide)
-        elif cy < -30 or (h < 0.5 and w > 50 and d > 50):
-            groups["face"].append(solid)
-
-        # Wheels: 8mm thick disc stacks (cx ≠ 0, d and h 38–51mm)
-        elif w <= 9 and min(d, h) > 38 and max(d, h) < 52:
-            if cx > 0:
-                groups["wheel_right"].append(solid)
-            else:
-                groups["wheel_left"].append(solid)
-
-        # Caster: near bottom (cz < −20mm), small
-        elif cz < -20 and w < 20 and max(d, h) < 25:
-            groups["caster"].append(solid)
-
-        # Battery cover: medium panel at rear (cy > 0), not body size
-        elif cy > 0 and 40 < w < 60 and 40 < d < 65 and h < 25:
-            groups["battery_cover"].append(solid)
-
-        # Skip everything else (PCB, ultrasonic pins)
-        else:
-            print(f"  [skip] Solid {i}: {w:.1f}×{d:.1f}×{h:.1f} mm  cx={cx:.1f} cy={cy:.1f} cz={cz:.1f}")
-
-    return groups
-
-
-def transform_stl(filepath, jx, jy, jz):
-    """Transform binary STL from STEP mm-space to ROS meter-space, centered at joint origin.
-
-    Applies the STEP→ROS axis remap and translates vertices so the mesh centroid
-    is at the link frame origin.  Joint origin (jx, jy, jz) is in STEP mm.
-
-    Axis mapping:  STEP(x,y,z) - joint  →  ROS(-y, -x, z) * MM_TO_M
-    Normals:       same rotation, negated to preserve outward-pointing direction
-                   (the STEP→ROS rotation has det = −1, so winding flips).
+    Axis mapping (det = -1, improper rotation — normals negated to keep
+    them outward-pointing):
+        ros_x = -(vy - jy) * MM_TO_M
+        ros_y = -(vx - jx) * MM_TO_M
+        ros_z =  (vz - jz) * MM_TO_M
     """
     with open(filepath, "rb") as f:
         data = f.read()
-
     if len(data) < 84:
-        print(f"  WARNING: {filepath} too small to transform")
         return
 
-    num_triangles = struct.unpack_from("<I", data, 80)[0]
+    n_tri  = struct.unpack_from("<I", data, 80)[0]
     offset = 84
-    out = bytearray(data[:84])
+    out    = bytearray(data[:84])
 
-    for _ in range(num_triangles):
+    for _ in range(n_tri):
         nx, ny, nz = struct.unpack_from("<fff", data, offset)
-        # Normal: rotate (STEP→ROS) then negate to restore outward direction
-        out.extend(struct.pack("<fff", ny, nx, -nz))
+        out.extend(struct.pack("<fff", ny, nx, -nz))   # rotate + negate
         offset += 12
         for _ in range(3):
             vx, vy, vz = struct.unpack_from("<fff", data, offset)
-            rx = -(vy - jy) * MM_TO_M   # ROS +X = STEP −Y
-            ry = -(vx - jx) * MM_TO_M   # ROS +Y = STEP −X
-            rz =  (vz - jz) * MM_TO_M   # ROS +Z = STEP +Z (relative to joint)
-            out.extend(struct.pack("<fff", rx, ry, rz))
+            out.extend(struct.pack("<fff",
+                -(vy - jy) * MM_TO_M,
+                -(vx - jx) * MM_TO_M,
+                 (vz - jz) * MM_TO_M))
             offset += 12
         out.extend(struct.pack("<H", struct.unpack_from("<H", data, offset)[0]))
         offset += 2
@@ -165,59 +99,125 @@ def transform_stl(filepath, jx, jy, jz):
         f.write(bytes(out))
 
 
-def get_combined_bbox(solids):
-    """Return the combined bounding box of a list of solids."""
-    bb = solids[0].BoundingBox()
-    for s in solids[1:]:
-        b = s.BoundingBox()
-        bb.xmin = min(bb.xmin, b.xmin)
-        bb.xmax = max(bb.xmax, b.xmax)
-        bb.ymin = min(bb.ymin, b.ymin)
-        bb.ymax = max(bb.ymax, b.ymax)
-        bb.zmin = min(bb.zmin, b.zmin)
-        bb.zmax = max(bb.zmax, b.zmax)
-    return bb
+# ── Bounding-box helpers ───────────────────────────────────────────────
+
+def bbox(solid):
+    bb = solid.BoundingBox()
+    return bb.xmin, bb.ymin, bb.zmin, bb.xmax, bb.ymax, bb.zmax
+
+def centroid(solid):
+    bb = solid.BoundingBox()
+    return ((bb.xmin+bb.xmax)/2,
+            (bb.ymin+bb.ymax)/2,
+            (bb.zmin+bb.zmax)/2)
+
+def group_bbox(solids):
+    x0=y0=z0= 1e18; x1=y1=z1=-1e18
+    for s in solids:
+        a,b,c,d,e,f = bbox(s)
+        x0=min(x0,a); y0=min(y0,b); z0=min(z0,c)
+        x1=max(x1,d); y1=max(y1,e); z1=max(z1,f)
+    return x0,y0,z0,x1,y1,z1
 
 
-def export_mesh(solids, name, mesh_dir, tolerance=0.5):
-    """Export a list of CadQuery solids as a single STL in ROS meter-space.
+# ── Export one group ───────────────────────────────────────────────────
 
-    The mesh is centered at the solid group's bounding-box centroid.
-    The printed URDF joint origin places that centroid correctly in base_link.
-    """
+def export_group(solids, name, mesh_dir, axle_y, axle_z,
+                 tolerance=0.5, angular=0.2, jx=None, jy=None, jz=None):
     if not solids:
-        print(f"  [skip] {name}: no matching solids")
-        return
+        print(f"  [skip] {name}: no solids")
+        return None
 
     shape = solids[0] if len(solids) == 1 else cq.Compound.makeCompound(solids)
-
     filepath = os.path.join(mesh_dir, f"{name}.stl")
     cq.exporters.export(
         cq.Workplane().add(shape),
-        filepath,
-        exportType="STL",
-        tolerance=tolerance,
-        angularTolerance=0.2,
-    )
+        filepath, exportType="STL",
+        tolerance=tolerance, angularTolerance=angular)
 
-    bb = get_combined_bbox(solids)
-    jx = (bb.xmin + bb.xmax) / 2
-    jy = (bb.ymin + bb.ymax) / 2
-    jz = (bb.zmin + bb.zmax) / 2
-    transform_stl(filepath, jx, jy, jz)
+    if jx is None:
+        x0,y0,z0,x1,y1,z1 = group_bbox(solids)
+        jx,jy,jz = (x0+x1)/2,(y0+y1)/2,(z0+z1)/2
 
-    # URDF joint origin in ROS base_link frame (base_link = STEP axle centre)
-    ros_x = -(jy - STEP_AXLE_Y) * MM_TO_M
-    ros_y = -jx * MM_TO_M
-    ros_z = (jz - STEP_AXLE_Z) * MM_TO_M
+    transform_stl(filepath, jx, jy, jz, axle_y, axle_z)
 
-    size_kb = os.path.getsize(filepath) / 1024
-    print(f"  {name}: {size_kb:.1f} KB  →  joint xyz=\"{ros_x:.4f} {ros_y:.4f} {ros_z:.4f}\"")
+    ros_x = -(jy - axle_y) * MM_TO_M
+    ros_y = -jx             * MM_TO_M
+    ros_z = (jz - axle_z)  * MM_TO_M
+    kb    = os.path.getsize(filepath) / 1024
+    print(f'  {name}: {kb:.0f} KB  →  joint xyz="{ros_x:.4f} {ros_y:.4f} {ros_z:.4f}"')
+    return jx, jy, jz
 
+
+# ── Classify solids ────────────────────────────────────────────────────
+
+def classify(solids, ground_z):
+    """Bin solids into named groups based on geometry.
+
+    Returns dict of name → [solid, ...]
+    """
+    groups = {
+        "body": [], "wheel_left": [], "wheel_right": [],
+        "caster": [], "led_ring": [], "ultrasonic": [],
+        "line_sensor_left": [], "line_sensor_right": [],
+        "led_individuals": [],
+        "skipped": [],
+    }
+
+    for s in solids:
+        bb = s.BoundingBox()
+        w, d, h = bb.xlen, bb.ylen, bb.zlen
+        cx = (bb.xmin+bb.xmax)/2
+        cy = (bb.ymin+bb.ymax)/2
+        cz = (bb.zmin+bb.zmax)/2
+        zmin_rel = bb.zmin - ground_z  # Z above ground
+
+        # ── Large body shell parts (≥50 mm square cross-section) ──────
+        if w > 50 and d > 50:
+            groups["body"].append(s)
+
+        # ── Wheels: thin discs, large diameter, laterally offset ──────
+        elif w < 12 and min(d,h) > 35:
+            if cx > 0:
+                groups["wheel_right"].append(s)
+            else:
+                groups["wheel_left"].append(s)
+
+        # ── LED Ring: medium ring shape, near top centre ───────────────
+        elif 30 < w < 80 and 30 < d < 80 and h < 15 and zmin_rel > 60:
+            groups["led_ring"].append(s)
+
+        # ── Individual ring LEDs: tiny, near top centre ────────────────
+        elif w < 10 and d < 10 and zmin_rel > 55:
+            groups["led_individuals"].append(s)
+
+        # ── Ultrasonic sensor: small box, near front (cy < -20 in STEP) ──
+        # Sensor housing is ~10x5x6mm — 'w' is the narrow axis along X
+        elif cy < -20 and 5 < w < 15 and 3 < d < 10 and 3 < h < 10:
+            groups["ultrasonic"].append(s)
+
+        # ── Caster: small near-spherical solid at ground level ─────────
+        # Robot has a front caster (cy ≈ -20 in STEP), not rear
+        elif zmin_rel < 3 and max(w,d,h) < 30 and abs(cx) < 5:
+            groups["caster"].append(s)
+
+        # ── Line sensors: thin PCBs (h≈1.6mm), laterally offset ────────
+        elif h < 3 and max(w,d) > 10 and abs(cx) > 5 and cy < 0 and zmin_rel < 30:
+            if cx > 0:
+                groups["line_sensor_right"].append(s)
+            else:
+                groups["line_sensor_left"].append(s)
+
+        else:
+            groups["skipped"].append(s)
+
+    return groups
+
+
+# ── Main ───────────────────────────────────────────────────────────────
 
 def main():
     step_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_STEP
-
     if not os.path.exists(step_path):
         print(f"STEP file not found: {step_path}")
         sys.exit(1)
@@ -225,23 +225,109 @@ def main():
     os.makedirs(MESH_DIR, exist_ok=True)
 
     print(f"Loading: {step_path}")
+    print("This may take several minutes…", flush=True)
+    import time; t0 = time.time()
     result = cq.importers.importStep(step_path)
+    print(f"Loaded in {time.time()-t0:.0f}s", flush=True)
+
     solids = list(result.solids().vals())
     print(f"Found {len(solids)} solids\n")
 
-    print("Classifying...")
-    groups = classify_solids(solids)
+    # ── Print all solids for inspection ───────────────────────────────
+    print("All solids:")
+    for i, s in enumerate(solids):
+        bb = s.BoundingBox()
+        cx=(bb.xmin+bb.xmax)/2; cy=(bb.ymin+bb.ymax)/2; cz=(bb.zmin+bb.zmax)/2
+        print(f"  S{i:3d}: {bb.xlen:6.1f}x{bb.ylen:6.1f}x{bb.zlen:6.1f}  "
+              f"cx={cx:7.2f} cy={cy:7.2f} cz={cz:7.2f}  zmin={bb.zmin:.2f}")
     print()
 
-    print("Exporting meshes (mm → meters)...")
-    export_mesh(groups["body"],          "body",          MESH_DIR, tolerance=0.5)
-    export_mesh(groups["face"],          "face",          MESH_DIR, tolerance=0.3)
-    export_mesh(groups["wheel_left"],    "wheel_left",    MESH_DIR, tolerance=0.2)
-    export_mesh(groups["wheel_right"],   "wheel_right",   MESH_DIR, tolerance=0.2)
-    export_mesh(groups["caster"],        "caster",        MESH_DIR, tolerance=0.3)
-    export_mesh(groups["battery_cover"], "battery_cover", MESH_DIR, tolerance=0.3)
+    # ── Ground plane and wheel axle from overall minimum Z ────────────
+    all_zmin = min(s.BoundingBox().zmin for s in solids)
+    all_zmax = max(s.BoundingBox().zmax for s in solids)
+    ground_z = all_zmin
+    print(f"Ground Z (lowest point) = {ground_z:.2f} mm")
 
-    print(f"\nDone! Meshes written to: {MESH_DIR}")
+    # ── Classify ───────────────────────────────────────────────────────
+    groups = classify(solids, ground_z)
+
+    # Derive wheel axle constants from wheel geometry
+    all_wheels = groups["wheel_left"] + groups["wheel_right"]
+    if all_wheels:
+        x0,y0,wz0,x1,y1,wz1 = group_bbox(all_wheels)
+        axle_z = (wz0 + wz1) / 2        # wheel centroid Z = axle height
+        axle_y = (y0  + y1)  / 2        # wheel centroid Y
+        wheel_r = (wz1 - wz0) / 2
+        half_base = (abs(x0) + abs(x1)) / 2   # half wheel-to-wheel distance
+    else:
+        print("WARNING: no wheel solids found — using zero axle constants")
+        axle_z = axle_y = 0.0
+        wheel_r = 0.0245
+        half_base = 0.0417
+
+    print(f"AXLE_Z   = {axle_z:.2f} mm  (wheel centroid Z)")
+    print(f"AXLE_Y   = {axle_y:.2f} mm  (wheel centroid Y ≈ 0)")
+    print(f"GROUND_Z = {ground_z:.2f} mm")
+    print(f"wheel_radius = {wheel_r*MM_TO_M:.4f} m")
+    print(f"wheel_base   = {2*half_base*MM_TO_M:.4f} m")
+    print()
+
+    # ── Report classification ──────────────────────────────────────────
+    for gname, gsolids in groups.items():
+        if gname == "skipped":
+            print(f"  [skip] {len(gsolids)} unclassified solids")
+            for s in gsolids:
+                bb = s.BoundingBox()
+                cx=(bb.xmin+bb.xmax)/2; cy=(bb.ymin+bb.ymax)/2; cz=(bb.zmin+bb.zmax)/2
+                print(f"    {bb.xlen:.1f}x{bb.ylen:.1f}x{bb.zlen:.1f} "
+                      f"cx={cx:.1f} cy={cy:.1f} cz={cz:.1f}")
+        else:
+            print(f"  {gname}: {len(gsolids)} solid(s)")
+    print()
+
+    # ── Export meshes ──────────────────────────────────────────────────
+    print("Exporting meshes…")
+
+    export_group(groups["body"],              "body",              MESH_DIR, axle_y, axle_z, tolerance=0.5)
+
+    # Wheels: centre at axle midpoint for correct rotation
+    if groups["wheel_left"]:
+        x0,_,_,x1,_,_ = group_bbox(groups["wheel_left"])
+        export_group(groups["wheel_left"],    "wheel_left",        MESH_DIR, axle_y, axle_z,
+                     tolerance=0.2, angular=0.15,
+                     jx=(x0+x1)/2, jy=axle_y, jz=axle_z)
+    if groups["wheel_right"]:
+        x0,_,_,x1,_,_ = group_bbox(groups["wheel_right"])
+        export_group(groups["wheel_right"],   "wheel_right",       MESH_DIR, axle_y, axle_z,
+                     tolerance=0.2, angular=0.15,
+                     jx=(x0+x1)/2, jy=axle_y, jz=axle_z)
+
+    export_group(groups["caster"],            "caster",            MESH_DIR, axle_y, axle_z, tolerance=0.3)
+    export_group(groups["led_ring"],          "led_ring",          MESH_DIR, axle_y, axle_z, tolerance=0.3)
+    export_group(groups["ultrasonic"],        "ultrasonic",        MESH_DIR, axle_y, axle_z, tolerance=0.3)
+    export_group(groups["line_sensor_left"],  "line_sensor_left",  MESH_DIR, axle_y, axle_z, tolerance=0.3)
+    export_group(groups["line_sensor_right"], "line_sensor_right", MESH_DIR, axle_y, axle_z, tolerance=0.3)
+
+    # ── Individual LED positions ───────────────────────────────────────
+    leds = groups["led_individuals"]
+    if leds:
+        print(f"\nLED ring frame positions ({len(leds)} LEDs):")
+        import math
+        led_data = []
+        for s in leds:
+            jx,jy,jz = centroid(s)
+            rx = -(jy - axle_y) * MM_TO_M
+            ry = -jx * MM_TO_M
+            rz = (jz - axle_z) * MM_TO_M
+            led_data.append((rx, ry, rz))
+        led_data.sort(key=lambda t: math.atan2(t[1], t[0]))
+        for i, (rx, ry, rz) in enumerate(led_data):
+            print(f'  led_{i}: xyz="{rx:.4f} {ry:.4f} {rz:.4f}"')
+
+    print(f"\nDone! Meshes in: {MESH_DIR}")
+    print("\n=== Copy into URDF ===")
+    print(f"  wheel_radius = {wheel_r*MM_TO_M:.4f}")
+    print(f"  wheel_base   = {2*half_base*MM_TO_M:.4f}")
 
 
 if __name__ == "__main__":

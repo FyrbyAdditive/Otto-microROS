@@ -12,6 +12,7 @@ install(DIRECTORY
 install(PROGRAMS
   scripts/otto_odom_publisher.py
   scripts/ultrasonic_to_laserscan.py
+  scripts/otto_visualizer.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

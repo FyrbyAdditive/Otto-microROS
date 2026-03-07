@@ -88,6 +88,13 @@ def generate_launch_description():
         parameters=[{'mode': 'passthrough'}],
         output='screen')
 
+    # LED ring + sonar visualizer (publishes MarkerArray for RViz)
+    visualizer = Node(
+        package='otto_bringup',
+        executable='otto_visualizer.py',
+        name='otto_visualizer',
+        output='screen')
+
     return LaunchDescription([
         agent_port_arg,
         variant_arg,
@@ -98,4 +105,5 @@ def generate_launch_description():
         joint_state_pub,
         odom_pub,
         scan_converter,
+        visualizer,
     ])

@@ -1,77 +1,62 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <!--
-  HP Robots Otto Starter - Parameterized URDF (Xacro)
-  ====================================================
-  Supports both wheeled (Starter Kit) and biped variants via xacro arg.
+  Otto Starter Kit — URDF (xacro)
+  Coordinate system: ROS REP-103 (X=forward, Y=left, Z=up)
+  base_footprint : ground plane (Z = 0)
+  base_link      : wheel axle height (Z = wheel_radius above ground)
 
-  Usage:
-    Wheeled: xacro otto_starter.urdf.xacro variant:=wheeled
-    Biped:   xacro otto_starter.urdf.xacro variant:=biped
+  Mesh joint origins are printed by scripts/export_meshes.py — update here
+  if the STEP file is re-exported.
 
-  Coordinate frame: X forward, Y left, Z up (REP-103)
-  Units: meters, radians, kg
+  All STL meshes are pre-centred at their joint origin so visual/collision
+  origins are (0 0 0) throughout.
 -->
 <robot name="otto_starter" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <!-- ============================== -->
-  <!-- Arguments                       -->
-  <!-- ============================== -->
-  <xacro:arg name="variant" default="wheeled"/>
-  <xacro:property name="variant" value="$(arg variant)"/>
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Parameters                                                        -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <xacro:property name="wheel_radius"   value="0.0245"/>   <!-- m -->
+  <xacro:property name="wheel_base"     value="0.0913"/>   <!-- m  (track width) -->
+  <xacro:property name="wheel_width"    value="0.008"/>    <!-- m -->
+  <xacro:property name="wheel_mass"     value="0.020"/>    <!-- kg -->
+  <xacro:property name="body_mass"      value="0.300"/>    <!-- kg -->
+  <xacro:property name="caster_mass"    value="0.010"/>    <!-- kg -->
 
-  <!-- ============================== -->
-  <!-- Physical Properties (from STEP) -->
-  <!-- ============================== -->
-  <xacro:property name="wheel_radius" value="0.0245"/>
-  <xacro:property name="wheel_width" value="0.0055"/>
-  <xacro:property name="wheel_base" value="0.0834"/>  <!-- 2 × 41.7 mm from STEP -->
-  <xacro:property name="body_width" value="0.075"/>
-  <xacro:property name="body_depth" value="0.072"/>
-  <xacro:property name="body_height" value="0.072"/>
-  <xacro:property name="caster_radius" value="0.006"/>
-  <xacro:property name="head_width" value="0.062"/>
-  <xacro:property name="head_depth" value="0.016"/>
-  <xacro:property name="head_height" value="0.032"/>
-
-  <!-- Positions relative to base_link (at axle centre, from export_meshes.py output) -->
-  <xacro:property name="body_offset_x" value="0.0230"/>   <!-- body centroid forward of axle -->
-  <xacro:property name="body_offset_z" value="0.0220"/>   <!-- body centroid above axle -->
-  <xacro:property name="face_offset_x" value="0.0605"/>   <!-- face centroid forward of axle -->
-  <xacro:property name="face_offset_z" value="0.0260"/>   <!-- face centroid above axle -->
-  <xacro:property name="caster_offset_x" value="0.0430"/> <!-- caster centroid forward of axle -->
-  <xacro:property name="caster_offset_z" value="-0.0190"/><!-- caster centroid below axle -->
-
-  <!-- ============================== -->
-  <!-- Material Definitions            -->
-  <!-- ============================== -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Materials                                                         -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
   <material name="otto_white">
     <color rgba="0.95 0.95 0.95 1.0"/>
   </material>
   <material name="otto_blue">
-    <color rgba="0.2 0.4 0.8 1.0"/>
+    <color rgba="0.12 0.47 0.71 1.0"/>
   </material>
   <material name="otto_dark">
     <color rgba="0.15 0.15 0.15 1.0"/>
   </material>
-  <material name="otto_orange">
-    <color rgba="1.0 0.5 0.0 1.0"/>
+  <material name="rubber_black">
+    <color rgba="0.08 0.08 0.08 1.0"/>
+  </material>
+  <material name="led_white">
+    <color rgba="1.0 1.0 1.0 1.0"/>
   </material>
   <material name="sensor_green">
     <color rgba="0.0 0.8 0.2 0.8"/>
   </material>
-  <material name="rubber_black">
-    <color rgba="0.1 0.1 0.1 1.0"/>
+  <material name="pcb_green">
+    <color rgba="0.05 0.35 0.05 1.0"/>
   </material>
 
-  <!-- ============================== -->
-  <!-- Inertia Macros                  -->
-  <!-- ============================== -->
-  <xacro:macro name="box_inertia" params="m w d h">
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Helper macro: simple box inertia                                  -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <xacro:macro name="box_inertia" params="m x y z">
     <inertial>
       <mass value="${m}"/>
-      <inertia ixx="${m*(d*d+h*h)/12}" ixy="0" ixz="0"
-               iyy="${m*(w*w+h*h)/12}" iyz="0"
-               izz="${m*(w*w+d*d)/12}"/>
+      <inertia ixx="${m*(y*y+z*z)/12}" ixy="0" ixz="0"
+               iyy="${m*(x*x+z*z)/12}" iyz="0"
+               izz="${m*(x*x+y*y)/12}"/>
     </inertial>
   </xacro:macro>
 
@@ -84,490 +69,270 @@
     </inertial>
   </xacro:macro>
 
-  <xacro:macro name="sphere_inertia" params="m r">
-    <inertial>
-      <mass value="${m}"/>
-      <inertia ixx="${2*m*r*r/5}" ixy="0" ixz="0"
-               iyy="${2*m*r*r/5}" iyz="0"
-               izz="${2*m*r*r/5}"/>
-    </inertial>
-  </xacro:macro>
-
-  <!-- ============================== -->
-  <!-- Base Footprint (ground plane)   -->
-  <!-- ============================== -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  base_footprint — ground reference frame (Z = 0)                  -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
   <link name="base_footprint"/>
 
   <joint name="base_footprint_joint" type="fixed">
     <parent link="base_footprint"/>
-    <child link="base_link"/>
+    <child  link="base_link"/>
     <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
   </joint>
 
-  <!-- ============================== -->
-  <!-- Base Link (body center at axle) -->
-  <!-- ============================== -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  base_link — wheel axle height                                     -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
   <link name="base_link">
+    <xacro:box_inertia m="${body_mass}" x="0.072" y="0.072" z="0.072"/>
+  </link>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Body shell                                                        -->
+  <!--  joint xyz from export_meshes.py:                                 -->
+  <!--    body: joint xyz="0.0231 0.0000 0.0220"                         -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <link name="body_link">
     <visual>
-      <origin xyz="${body_offset_x} 0 ${body_offset_z}" rpy="0 0 0"/>
-      <!-- mesh is centered at its own centroid; this origin places it in base_link -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/body.stl"/>
       </geometry>
       <material name="otto_white"/>
     </visual>
     <collision>
-      <origin xyz="${body_offset_x} 0 ${body_offset_z}" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="${body_depth} ${body_width} ${body_height}"/>
+        <box size="0.072 0.072 0.072"/>
       </geometry>
     </collision>
-    <xacro:box_inertia m="0.120" w="${body_width}" d="${body_depth}" h="${body_height}"/>
+    <xacro:box_inertia m="${body_mass}" x="0.072" y="0.072" z="0.072"/>
   </link>
 
-  <!-- ============================== -->
-  <!-- Head Link (face plate at front) -->
-  <!-- ============================== -->
-  <joint name="head_joint" type="fixed">
+  <joint name="body_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="head_link"/>
-    <origin xyz="${face_offset_x} 0 ${face_offset_z}" rpy="0 0 0"/>
+    <child  link="body_link"/>
+    <origin xyz="0.0231 0.0000 0.0220" rpy="0 0 0"/>
   </joint>
 
-  <link name="head_link">
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Wheels                                                            -->
+  <!--  joint xyz from export_meshes.py:                                 -->
+  <!--    wheel_left:  joint xyz="-0.0000 0.0416 0.0000"                 -->
+  <!--    wheel_right: joint xyz="-0.0000 -0.0416 0.0000"                -->
+  <!--  Meshes centred at axle midpoint — rotate around Y correctly.     -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <link name="left_wheel_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://otto_description/meshes/face.stl"/>
+        <mesh filename="package://otto_description/meshes/wheel_left.stl"/>
       </geometry>
-      <material name="otto_blue"/>
+      <material name="rubber_black"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertia m="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}"/>
+  </link>
+
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child  link="left_wheel_link"/>
+    <origin xyz="-0.0000 0.0416 0.0000" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="right_wheel_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://otto_description/meshes/wheel_right.stl"/>
+      </geometry>
+      <material name="rubber_black"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertia m="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}"/>
+  </link>
+
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child  link="right_wheel_link"/>
+    <origin xyz="-0.0000 -0.0416 0.0000" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Caster (front ball caster)                                        -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <link name="caster_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://otto_description/meshes/caster.stl"/>
+      </geometry>
+      <material name="otto_dark"/>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="${head_depth} ${head_width} ${head_height}"/>
+        <sphere radius="0.006"/>
       </geometry>
     </collision>
-    <xacro:box_inertia m="0.025" w="${head_width}" d="${head_depth}" h="${head_height}"/>
+    <xacro:box_inertia m="${caster_mass}" x="0.012" y="0.012" z="0.012"/>
   </link>
 
-  <!-- ============================== -->
-  <!-- Ultrasonic Sensor Frame         -->
-  <!-- ============================== -->
-  <joint name="ultrasonic_joint" type="fixed">
-    <parent link="head_link"/>
-    <child link="ultrasonic_link"/>
-    <origin xyz="0.026 0 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name="ultrasonic_link">
-    <visual>
-      <origin xyz="0.003 0.008 0" rpy="0 ${pi/2} 0"/>
-      <geometry>
-        <cylinder radius="0.008" length="0.006"/>
-      </geometry>
-      <material name="sensor_green"/>
-    </visual>
-    <visual>
-      <origin xyz="0.003 -0.008 0" rpy="0 ${pi/2} 0"/>
-      <geometry>
-        <cylinder radius="0.008" length="0.006"/>
-      </geometry>
-      <material name="sensor_green"/>
-    </visual>
-    <inertial>
-      <mass value="0.005"/>
-      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
-    </inertial>
-  </link>
-
-  <!-- ============================== -->
-  <!-- LED Ring (visual only)          -->
-  <!-- ============================== -->
-  <joint name="led_ring_joint" type="fixed">
+  <joint name="caster_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="led_ring_link"/>
-    <origin xyz="${body_offset_x} 0 ${body_offset_z + 0.030}" rpy="0 0 0"/>
+    <child  link="caster_link"/>
+    <origin xyz="0.0430 0.0000 -0.0190" rpy="0 0 0"/>
   </joint>
 
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  LED Ring                                                          -->
+  <!--  joint xyz from export_meshes.py:                                 -->
+  <!--    led_ring: joint xyz="0.0231 0.0001 0.0516"                     -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
   <link name="led_ring_link">
     <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.018" length="0.003"/>
+        <mesh filename="package://otto_description/meshes/led_ring.stl"/>
       </geometry>
-      <material name="otto_orange"/>
+      <material name="pcb_green"/>
     </visual>
-    <inertial>
-      <mass value="0.003"/>
-      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
-    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="0.002"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertia m="0.005" x="0.05" y="0.05" z="0.002"/>
   </link>
 
-  <!-- ============================== -->
-  <!-- IMU Link (placeholder)          -->
-  <!-- ============================== -->
-  <joint name="imu_joint" type="fixed">
+  <joint name="led_ring_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="imu_link"/>
+    <child  link="led_ring_link"/>
+    <origin xyz="0.0231 0.0001 0.0516" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ── Individual LED frames (positions relative to base_link) ──────
+       Values from export_meshes.py LED ring frame positions output.
+       These are used by otto_visualizer to publish marker poses.       -->
+
+  <xacro:macro name="led_frame" params="n x y z">
+    <link name="led_${n}_link"/>
+    <joint name="led_${n}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child  link="led_${n}_link"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:led_frame n="0"  x="0.0049" y="-0.0104" z="0.0532"/>
+  <xacro:led_frame n="1"  x="0.0126" y="-0.0181" z="0.0532"/>
+  <xacro:led_frame n="2"  x="0.0231" y="-0.0209" z="0.0532"/>
+  <xacro:led_frame n="3"  x="0.0336" y="-0.0181" z="0.0532"/>
+  <xacro:led_frame n="4"  x="0.0412" y="-0.0104" z="0.0532"/>
+  <xacro:led_frame n="5"  x="0.0536" y="-0.0130" z="0.0310"/>
+  <xacro:led_frame n="6"  x="0.0441" y=" 0.0001" z="0.0532"/>
+  <xacro:led_frame n="7"  x="0.0231" y=" 0.0001" z="0.0532"/>
+  <xacro:led_frame n="8"  x="0.0021" y=" 0.0001" z="0.0532"/>
+  <xacro:led_frame n="9"  x="0.0536" y=" 0.0130" z="0.0310"/>
+  <xacro:led_frame n="10" x="0.0412" y=" 0.0106" z="0.0532"/>
+  <xacro:led_frame n="11" x="0.0336" y=" 0.0183" z="0.0532"/>
+  <xacro:led_frame n="12" x="0.0231" y=" 0.0211" z="0.0532"/>
+  <xacro:led_frame n="13" x="0.0126" y=" 0.0183" z="0.0532"/>
+  <xacro:led_frame n="14" x="0.0049" y=" 0.0106" z="0.0532"/>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Ultrasonic sensor                                                 -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <link name="ultrasonic_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://otto_description/meshes/ultrasonic.stl"/>
+      </geometry>
+      <material name="sensor_green"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.010 0.005 0.006"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertia m="0.002" x="0.010" y="0.005" z="0.006"/>
+  </link>
+
+  <joint name="ultrasonic_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="ultrasonic_link"/>
+    <origin xyz="0.0465 -0.0000 0.0049" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Sensor ray origin — midpoint between transducers, pointing forward -->
+  <link name="ultrasonic_sensor_frame"/>
+  <joint name="ultrasonic_sensor_joint" type="fixed">
+    <parent link="ultrasonic_link"/>
+    <child  link="ultrasonic_sensor_frame"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <link name="imu_link">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="1e-9" ixy="0" ixz="0" iyy="1e-9" iyz="0" izz="1e-9"/>
-    </inertial>
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Line sensors                                                      -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <link name="line_sensor_left_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://otto_description/meshes/line_sensor_left.stl"/>
+      </geometry>
+      <material name="pcb_green"/>
+    </visual>
+    <xacro:box_inertia m="0.003" x="0.014" y="0.034" z="0.002"/>
   </link>
 
-  <!-- ============================================================ -->
-  <!-- WHEELED VARIANT                                               -->
-  <!-- ============================================================ -->
-  <xacro:if value="${variant == 'wheeled'}">
+  <joint name="line_sensor_left_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="line_sensor_left_link"/>
+    <origin xyz="0.0347 0.0130 -0.0065" rpy="0 0 0"/>
+  </joint>
 
-    <!-- Left Wheel -->
-    <joint name="left_wheel_joint" type="continuous">
-      <parent link="base_link"/>
-      <child link="left_wheel_link"/>
-      <origin xyz="0 ${wheel_base/2} 0" rpy="0 0 0"/>
-      <axis xyz="0 1 0"/>
-      <dynamics damping="0.01" friction="0.01"/>
-    </joint>
+  <link name="line_sensor_right_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://otto_description/meshes/line_sensor_right.stl"/>
+      </geometry>
+      <material name="pcb_green"/>
+    </visual>
+    <xacro:box_inertia m="0.003" x="0.014" y="0.034" z="0.002"/>
+  </link>
 
-    <link name="left_wheel_link">
-      <visual>
-        <geometry>
-          <mesh filename="package://otto_description/meshes/wheel_left.stl"/>
-        </geometry>
-        <material name="rubber_black"/>
-      </visual>
-      <collision>
-        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
-        <geometry>
-          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
-        </geometry>
-      </collision>
-      <xacro:cylinder_inertia m="0.015" r="${wheel_radius}" h="${wheel_width}"/>
-    </link>
+  <joint name="line_sensor_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="line_sensor_right_link"/>
+    <origin xyz="0.0347 -0.0130 -0.0065" rpy="0 0 0"/>
+  </joint>
 
-    <!-- Right Wheel -->
-    <joint name="right_wheel_joint" type="continuous">
-      <parent link="base_link"/>
-      <child link="right_wheel_link"/>
-      <origin xyz="0 ${-wheel_base/2} 0" rpy="0 0 0"/>
-      <axis xyz="0 1 0"/>
-      <dynamics damping="0.01" friction="0.01"/>
-    </joint>
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  IMU (no mesh, just a TF frame at approximate board location)      -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <link name="imu_link"/>
 
-    <link name="right_wheel_link">
-      <visual>
-        <geometry>
-          <mesh filename="package://otto_description/meshes/wheel_right.stl"/>
-        </geometry>
-        <material name="rubber_black"/>
-      </visual>
-      <collision>
-        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
-        <geometry>
-          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
-        </geometry>
-      </collision>
-      <xacro:cylinder_inertia m="0.015" r="${wheel_radius}" h="${wheel_width}"/>
-    </link>
-
-    <!-- Ball Caster (front support) -->
-    <joint name="caster_joint" type="fixed">
-      <parent link="base_link"/>
-      <child link="caster_link"/>
-      <origin xyz="${caster_offset_x} 0 ${caster_offset_z}" rpy="0 0 0"/>
-    </joint>
-
-    <link name="caster_link">
-      <visual>
-        <geometry>
-          <mesh filename="package://otto_description/meshes/caster.stl"/>
-        </geometry>
-        <material name="otto_dark"/>
-      </visual>
-      <collision>
-        <geometry>
-          <sphere radius="${caster_radius}"/>
-        </geometry>
-      </collision>
-      <xacro:sphere_inertia m="0.007" r="${caster_radius}"/>
-    </link>
-
-    <!-- Battery Cover (rear panel, includes HP logo) -->
-    <joint name="battery_cover_joint" type="fixed">
-      <parent link="base_link"/>
-      <child link="battery_cover_link"/>
-      <origin xyz="0.0165 0 0.0197" rpy="0 0 0"/>
-    </joint>
-
-    <link name="battery_cover_link">
-      <visual>
-        <geometry>
-          <mesh filename="package://otto_description/meshes/battery_cover.stl"/>
-        </geometry>
-        <material name="otto_white"/>
-      </visual>
-      <inertial>
-        <mass value="0.010"/>
-        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-      </inertial>
-    </link>
-
-    <!-- IR Line Sensors (bottom, pointing down) -->
-    <joint name="ir_left_joint" type="fixed">
-      <parent link="base_link"/>
-      <child link="ir_left_link"/>
-      <origin xyz="0.020 0.015 ${-wheel_radius + 0.005}" rpy="0 0 0"/>
-    </joint>
-    <link name="ir_left_link">
-      <visual>
-        <geometry><box size="0.010 0.005 0.003"/></geometry>
-        <material name="otto_dark"/>
-      </visual>
-      <inertial>
-        <mass value="0.002"/>
-        <inertia ixx="1e-8" ixy="0" ixz="0" iyy="1e-8" iyz="0" izz="1e-8"/>
-      </inertial>
-    </link>
-
-    <joint name="ir_right_joint" type="fixed">
-      <parent link="base_link"/>
-      <child link="ir_right_link"/>
-      <origin xyz="0.020 -0.015 ${-wheel_radius + 0.005}" rpy="0 0 0"/>
-    </joint>
-    <link name="ir_right_link">
-      <visual>
-        <geometry><box size="0.010 0.005 0.003"/></geometry>
-        <material name="otto_dark"/>
-      </visual>
-      <inertial>
-        <mass value="0.002"/>
-        <inertia ixx="1e-8" ixy="0" ixz="0" iyy="1e-8" iyz="0" izz="1e-8"/>
-      </inertial>
-    </link>
-
-    <!-- Gazebo differential drive plugin -->
-    <gazebo>
-      <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
-        <ros><namespace>/otto</namespace></ros>
-        <left_joint>left_wheel_joint</left_joint>
-        <right_joint>right_wheel_joint</right_joint>
-        <wheel_separation>${wheel_base}</wheel_separation>
-        <wheel_diameter>${wheel_radius * 2}</wheel_diameter>
-        <max_wheel_torque>1.0</max_wheel_torque>
-        <max_wheel_acceleration>2.0</max_wheel_acceleration>
-        <command_topic>cmd_vel</command_topic>
-        <odometry_topic>odom</odometry_topic>
-        <odometry_frame>odom</odometry_frame>
-        <robot_base_frame>base_footprint</robot_base_frame>
-        <publish_odom>true</publish_odom>
-        <publish_odom_tf>true</publish_odom_tf>
-        <publish_wheel_tf>true</publish_wheel_tf>
-      </plugin>
-    </gazebo>
-
-    <!-- Gazebo caster friction (low for free rolling) -->
-    <gazebo reference="caster_link">
-      <mu1>0.05</mu1>
-      <mu2>0.05</mu2>
-      <material>Gazebo/DarkGrey</material>
-    </gazebo>
-
-  </xacro:if>
-
-  <!-- ============================================================ -->
-  <!-- BIPED VARIANT                                                 -->
-  <!-- ============================================================ -->
-  <xacro:if value="${variant == 'biped'}">
-
-    <!-- Leg macro to avoid duplication -->
-    <xacro:macro name="otto_leg" params="side y_sign">
-      <joint name="${side}_hip_joint" type="revolute">
-        <parent link="base_link"/>
-        <child link="${side}_leg_link"/>
-        <origin xyz="0 ${y_sign * 0.020} -0.020" rpy="0 0 0"/>
-        <axis xyz="0 0 1"/>
-        <limit lower="-1.5708" upper="1.5708" effort="1.8" velocity="6.0"/>
-        <dynamics damping="0.01" friction="0.01"/>
-      </joint>
-
-      <link name="${side}_leg_link">
-        <visual>
-          <origin xyz="0 0 -0.015" rpy="0 0 0"/>
-          <geometry><box size="0.012 0.008 0.030"/></geometry>
-          <material name="otto_white"/>
-        </visual>
-        <collision>
-          <origin xyz="0 0 -0.015" rpy="0 0 0"/>
-          <geometry><box size="0.014 0.010 0.032"/></geometry>
-        </collision>
-        <xacro:box_inertia m="0.012" w="0.008" d="0.012" h="0.030"/>
-      </link>
-
-      <joint name="${side}_ankle_joint" type="revolute">
-        <parent link="${side}_leg_link"/>
-        <child link="${side}_foot_link"/>
-        <origin xyz="0 0 -0.030" rpy="0 0 0"/>
-        <axis xyz="1 0 0"/>
-        <limit lower="-1.5708" upper="1.5708" effort="1.8" velocity="6.0"/>
-        <dynamics damping="0.01" friction="0.01"/>
-      </joint>
-
-      <link name="${side}_foot_link">
-        <visual>
-          <origin xyz="0.005 0 -0.005" rpy="0 0 0"/>
-          <geometry><box size="0.045 0.030 0.010"/></geometry>
-          <material name="otto_blue"/>
-        </visual>
-        <visual>
-          <origin xyz="0.005 0 -0.011" rpy="0 0 0"/>
-          <geometry><box size="0.043 0.028 0.002"/></geometry>
-          <material name="rubber_black"/>
-        </visual>
-        <collision>
-          <origin xyz="0.005 0 -0.006" rpy="0 0 0"/>
-          <geometry><box size="0.047 0.032 0.012"/></geometry>
-        </collision>
-        <xacro:box_inertia m="0.020" w="0.030" d="0.045" h="0.010"/>
-      </link>
-
-      <!-- IR sensor on foot bottom -->
-      <joint name="${side}_ir_joint" type="fixed">
-        <parent link="${side}_foot_link"/>
-        <child link="${side}_ir_link"/>
-        <origin xyz="0.015 0 -0.012" rpy="0 0 0"/>
-      </joint>
-      <link name="${side}_ir_link">
-        <visual>
-          <geometry><box size="0.010 0.005 0.003"/></geometry>
-          <material name="otto_dark"/>
-        </visual>
-        <inertial>
-          <mass value="0.002"/>
-          <inertia ixx="1e-8" ixy="0" ixz="0" iyy="1e-8" iyz="0" izz="1e-8"/>
-        </inertial>
-      </link>
-
-      <!-- Gazebo foot friction -->
-      <gazebo reference="${side}_foot_link">
-        <mu1>1.0</mu1><mu2>1.0</mu2>
-        <kp>1e6</kp><kd>1e2</kd>
-        <material>Gazebo/Blue</material>
-      </gazebo>
-    </xacro:macro>
-
-    <xacro:otto_leg side="left" y_sign="1"/>
-    <xacro:otto_leg side="right" y_sign="-1"/>
-
-    <!-- Ball caster for biped balance (rear) -->
-    <joint name="caster_joint" type="fixed">
-      <parent link="base_link"/>
-      <child link="caster_link"/>
-      <origin xyz="-0.018 0 -0.026" rpy="0 0 0"/>
-    </joint>
-    <link name="caster_link">
-      <visual>
-        <geometry><sphere radius="${caster_radius}"/></geometry>
-        <material name="otto_dark"/>
-      </visual>
-      <collision>
-        <geometry><sphere radius="${caster_radius}"/></geometry>
-      </collision>
-      <xacro:sphere_inertia m="0.007" r="${caster_radius}"/>
-    </link>
-    <gazebo reference="caster_link">
-      <mu1>0.05</mu1><mu2>0.05</mu2>
-      <material>Gazebo/DarkGrey</material>
-    </gazebo>
-
-    <!-- ros2_control for biped servo joints -->
-    <ros2_control name="otto_servo_system" type="system">
-      <hardware>
-        <plugin>gazebo_ros2_control/GazeboSystem</plugin>
-      </hardware>
-      <joint name="left_hip_joint">
-        <command_interface name="position">
-          <param name="min">-1.5708</param><param name="max">1.5708</param>
-        </command_interface>
-        <state_interface name="position"/><state_interface name="velocity"/>
-      </joint>
-      <joint name="right_hip_joint">
-        <command_interface name="position">
-          <param name="min">-1.5708</param><param name="max">1.5708</param>
-        </command_interface>
-        <state_interface name="position"/><state_interface name="velocity"/>
-      </joint>
-      <joint name="left_ankle_joint">
-        <command_interface name="position">
-          <param name="min">-1.5708</param><param name="max">1.5708</param>
-        </command_interface>
-        <state_interface name="position"/><state_interface name="velocity"/>
-      </joint>
-      <joint name="right_ankle_joint">
-        <command_interface name="position">
-          <param name="min">-1.5708</param><param name="max">1.5708</param>
-        </command_interface>
-        <state_interface name="position"/><state_interface name="velocity"/>
-      </joint>
-    </ros2_control>
-    <gazebo>
-      <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
-        <ros><namespace>/otto</namespace></ros>
-        <robot_param>robot_description</robot_param>
-      </plugin>
-    </gazebo>
-
-  </xacro:if>
-
-  <!-- ============================== -->
-  <!-- Gazebo common properties        -->
-  <!-- ============================== -->
-  <gazebo reference="base_link"><material>Gazebo/White</material></gazebo>
-  <gazebo reference="head_link"><material>Gazebo/Blue</material></gazebo>
-
-  <!-- Ultrasonic range sensor plugin -->
-  <gazebo reference="ultrasonic_link">
-    <sensor type="ray" name="otto_ultrasonic">
-      <always_on>true</always_on>
-      <update_rate>10.0</update_rate>
-      <visualize>true</visualize>
-      <ray>
-        <scan>
-          <horizontal>
-            <samples>5</samples><resolution>1</resolution>
-            <min_angle>-0.131</min_angle><max_angle>0.131</max_angle>
-          </horizontal>
-          <vertical>
-            <samples>5</samples><resolution>1</resolution>
-            <min_angle>-0.131</min_angle><max_angle>0.131</max_angle>
-          </vertical>
-        </scan>
-        <range><min>0.02</min><max>4.0</max><resolution>0.01</resolution></range>
-      </ray>
-      <plugin name="ultrasonic_controller" filename="libgazebo_ros_ray_sensor.so">
-        <ros><namespace>/otto</namespace><remapping>~/out:=ultrasonic/range</remapping></ros>
-        <output_type>sensor_msgs/Range</output_type>
-        <radiation_type>ultrasound</radiation_type>
-        <field_of_view>0.2618</field_of_view>
-        <frame_name>ultrasonic_link</frame_name>
-      </plugin>
-    </sensor>
-  </gazebo>
-
-  <!-- IMU plugin -->
-  <gazebo reference="imu_link">
-    <sensor type="imu" name="otto_imu">
-      <always_on>true</always_on>
-      <update_rate>100.0</update_rate>
-      <plugin name="imu_controller" filename="libgazebo_ros_imu_sensor.so">
-        <ros><namespace>/otto</namespace><remapping>~/out:=imu/data</remapping></ros>
-        <frame_name>imu_link</frame_name>
-        <initial_orientation_as_reference>false</initial_orientation_as_reference>
-      </plugin>
-    </sensor>
-  </gazebo>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="imu_link"/>
+    <origin xyz="0.023 0.000 0.010" rpy="0 0 0"/>
+  </joint>
 
 </robot>
