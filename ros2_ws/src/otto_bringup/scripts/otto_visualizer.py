@@ -20,7 +20,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 
 # Number of LED frames defined in the URDF
-NUM_LEDS = 15
+NUM_LEDS = 13
 
 # Sonar colour range (metres): green (far) → red (near)
 SONAR_FAR  = 0.5
