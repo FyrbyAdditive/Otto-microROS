@@ -78,10 +78,14 @@ fi
 
 # ── 3. Build the ROS2 workspace ───────────────────────────────────────────────
 info "Building the ROS2 workspace..."
+# Remove any stale CMake cache that may have cached conda's Python path.
+rm -rf "$WS_DIR/build"
 cd "$WS_DIR"
-# Prepend system Python to PATH so colcon/CMake don't pick up conda's Python,
-# which lacks catkin_pkg and other ROS2 build dependencies.
-PATH=/usr/bin:/usr/local/bin:$PATH colcon build --symlink-install
+# Strip conda/miniconda from PATH so CMake finds the system Python3,
+# and pass Python3_EXECUTABLE explicitly as a belt-and-suspenders measure.
+CLEAN_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v 'miniconda\|conda' | tr '\n' ':' | sed 's/:$//')
+PATH="$CLEAN_PATH" colcon build --symlink-install \
+    --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
 cd "$SCRIPT_DIR"
 
 # ── 4. Patch ~/.bashrc ────────────────────────────────────────────────────────
