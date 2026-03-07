@@ -66,11 +66,17 @@ def transform_stl(filepath, jx, jy, jz, axle_y, axle_z):
     origin corresponds to the link frame origin in the URDF so the visual
     origin can be left at (0 0 0).
 
-    Axis mapping (det = -1, improper rotation — normals negated to keep
-    them outward-pointing):
+    Axis mapping (det = -1, improper rotation):
         ros_x = -(vy - jy) * MM_TO_M
         ros_y = -(vx - jx) * MM_TO_M
         ros_z =  (vz - jz) * MM_TO_M
+
+    Because det = -1 this transform mirrors the geometry, reversing the
+    winding order of every triangle.  Ogre3D (used by RViz2) determines
+    front/back faces from vertex winding, not the stored STL normal, so
+    reversed winding causes every face to be backface-culled (transparent
+    from outside).  Fix: swap vertices 1 and 2 to restore CCW winding.
+    Stored normal updated consistently: n' = M * n = (-ny, -nx, nz).
     """
     with open(filepath, "rb") as f:
         data = f.read()
@@ -83,15 +89,22 @@ def transform_stl(filepath, jx, jy, jz, axle_y, axle_z):
 
     for _ in range(n_tri):
         nx, ny, nz = struct.unpack_from("<fff", data, offset)
-        out.extend(struct.pack("<fff", ny, nx, -nz))   # rotate + negate
+        # M * n for the det=-1 mapping; winding swap below restores outward sense
+        out.extend(struct.pack("<fff", -ny, -nx, nz))
         offset += 12
+        # Read all three vertices first so we can swap winding
+        verts = []
         for _ in range(3):
             vx, vy, vz = struct.unpack_from("<fff", data, offset)
-            out.extend(struct.pack("<fff",
+            verts.append((
                 -(vy - jy) * MM_TO_M,
                 -(vx - jx) * MM_TO_M,
                  (vz - jz) * MM_TO_M))
             offset += 12
+        # Write v0, v2, v1 — swaps the last two to correct the winding reversal
+        out.extend(struct.pack("<fff", *verts[0]))
+        out.extend(struct.pack("<fff", *verts[2]))
+        out.extend(struct.pack("<fff", *verts[1]))
         out.extend(struct.pack("<H", struct.unpack_from("<H", data, offset)[0]))
         offset += 2
 
