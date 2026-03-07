@@ -106,21 +106,21 @@
   <!--  all visual origins are (0 0 0).                                   -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <link name="body_link">
-    <!-- Middle: main cylindrical shell — dark grey -->
+    <!-- Middle: main cylindrical shell — grey -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/body_shell.stl"/>
       </geometry>
-      <material name="otto_dark_grey"/>
+      <material name="body_shell_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
     </visual>
-    <!-- Middle: rear battery clips — dark grey -->
+    <!-- Middle: rear battery clips — grey -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/body_clips.stl"/>
       </geometry>
-      <material name="otto_dark_grey"/>
+      <material name="body_clips_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
     </visual>
     <!-- Top: dome and cap sections — black -->
     <visual>
@@ -128,7 +128,7 @@
       <geometry>
         <mesh filename="package://otto_description/meshes/body_top.stl"/>
       </geometry>
-      <material name="otto_black"/>
+      <material name="body_top_mat"><color rgba="0.03 0.03 0.03 1.0"/></material>
     </visual>
     <!-- Top: logo line engravings — black -->
     <visual>
@@ -136,23 +136,23 @@
       <geometry>
         <mesh filename="package://otto_description/meshes/body_top_lines.stl"/>
       </geometry>
-      <material name="otto_black"/>
+      <material name="body_top_lines_mat"><color rgba="0.03 0.03 0.03 1.0"/></material>
     </visual>
-    <!-- Unnamed COMPOUND: bottom shell — black -->
+    <!-- Bottom shell — black -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/body_bottom.stl"/>
       </geometry>
-      <material name="otto_black"/>
+      <material name="body_bottom_mat"><color rgba="0.03 0.03 0.03 1.0"/></material>
     </visual>
-    <!-- Unnamed COMPOUND: front face panel — dark grey -->
+    <!-- Front face panel — grey -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/body_face.stl"/>
       </geometry>
-      <material name="otto_dark_grey"/>
+      <material name="body_face_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -178,21 +178,21 @@
   <!--    wheel_right: joint xyz="0.0000 -0.0416 0.0000"                -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <link name="left_wheel_link">
-    <!-- Hub + outer rim — dark grey -->
+    <!-- Hub + outer rim — grey -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/wheel_left_rim.stl"/>
       </geometry>
-      <material name="otto_dark_grey"/>
+      <material name="left_rim_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
     </visual>
-    <!-- Rubber tyre — near-black -->
+    <!-- Rubber tyre — black -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/wheel_left_tire.stl"/>
       </geometry>
-      <material name="rubber_black"/>
+      <material name="left_tire_mat"><color rgba="0.05 0.05 0.05 1.0"/></material>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
@@ -211,21 +211,21 @@
   </joint>
 
   <link name="right_wheel_link">
-    <!-- Hub + outer rim — dark grey -->
+    <!-- Hub + outer rim — grey -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/wheel_right_rim.stl"/>
       </geometry>
-      <material name="otto_dark_grey"/>
+      <material name="right_rim_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
     </visual>
-    <!-- Rubber tyre — near-black -->
+    <!-- Rubber tyre — black -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <mesh filename="package://otto_description/meshes/wheel_right_tire.stl"/>
       </geometry>
-      <material name="rubber_black"/>
+      <material name="right_tire_mat"><color rgba="0.05 0.05 0.05 1.0"/></material>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
@@ -252,7 +252,7 @@
       <geometry>
         <mesh filename="package://otto_description/meshes/caster.stl"/>
       </geometry>
-      <material name="otto_dark"/>
+      <material name="caster_mat"><color rgba="0.10 0.10 0.10 1.0"/></material>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
