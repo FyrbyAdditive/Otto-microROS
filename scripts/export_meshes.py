@@ -172,8 +172,11 @@ def classify(solids, ground_z):
         cz = (bb.zmin+bb.zmax)/2
         zmin_rel = bb.zmin - ground_z  # Z above ground
 
-        # ── Large body shell parts (≥50 mm square cross-section) ──────
-        if w > 50 and d > 50:
+        # ── Large body shell parts ─────────────────────────────────────
+        # Round shell: large footprint (w>50, d>50)
+        # Front face panel: wide+tall but thin, centred, at front of robot
+        if (w > 50 and d > 50) or \
+           (w > 55 and h > 25 and d < 20 and abs(cx) < 5 and cy < -30):
             groups["body"].append(s)
 
         # ── Wheels: thin discs, large diameter, laterally offset ──────
@@ -191,9 +194,9 @@ def classify(solids, ground_z):
         elif w < 10 and d < 10 and zmin_rel > 55:
             groups["led_individuals"].append(s)
 
-        # ── Ultrasonic sensor: small box, near front (cy < -20 in STEP) ──
-        # Sensor housing is ~10x5x6mm — 'w' is the narrow axis along X
-        elif cy < -20 and 5 < w < 15 and 3 < d < 10 and 3 < h < 10:
+        # ── Ultrasonic sensor: small box, near front, on centreline ──────
+        # Housing is ~10x5x6mm; cx≈0 excludes servo motors at cx=±13
+        elif cy < -20 and abs(cx) < 5 and 5 < w < 15 and 3 < d < 10 and 3 < h < 10:
             groups["ultrasonic"].append(s)
 
         # ── Caster: small near-spherical solid at ground level ─────────
@@ -288,25 +291,31 @@ def main():
     # ── Export meshes ──────────────────────────────────────────────────
     print("Exporting meshes…")
 
-    export_group(groups["body"],              "body",              MESH_DIR, axle_y, axle_z, tolerance=0.5)
+    export_group(groups["body"],              "body",              MESH_DIR, axle_y, axle_z,
+                 tolerance=0.05, angular=0.02)
 
     # Wheels: centre at axle midpoint for correct rotation
     if groups["wheel_left"]:
         x0,_,_,x1,_,_ = group_bbox(groups["wheel_left"])
         export_group(groups["wheel_left"],    "wheel_left",        MESH_DIR, axle_y, axle_z,
-                     tolerance=0.2, angular=0.15,
+                     tolerance=0.05, angular=0.02,
                      jx=(x0+x1)/2, jy=axle_y, jz=axle_z)
     if groups["wheel_right"]:
         x0,_,_,x1,_,_ = group_bbox(groups["wheel_right"])
         export_group(groups["wheel_right"],   "wheel_right",       MESH_DIR, axle_y, axle_z,
-                     tolerance=0.2, angular=0.15,
+                     tolerance=0.05, angular=0.02,
                      jx=(x0+x1)/2, jy=axle_y, jz=axle_z)
 
-    export_group(groups["caster"],            "caster",            MESH_DIR, axle_y, axle_z, tolerance=0.3)
-    export_group(groups["led_ring"],          "led_ring",          MESH_DIR, axle_y, axle_z, tolerance=0.3)
-    export_group(groups["ultrasonic"],        "ultrasonic",        MESH_DIR, axle_y, axle_z, tolerance=0.3)
-    export_group(groups["line_sensor_left"],  "line_sensor_left",  MESH_DIR, axle_y, axle_z, tolerance=0.3)
-    export_group(groups["line_sensor_right"], "line_sensor_right", MESH_DIR, axle_y, axle_z, tolerance=0.3)
+    export_group(groups["caster"],            "caster",            MESH_DIR, axle_y, axle_z,
+                 tolerance=0.05, angular=0.02)
+    export_group(groups["led_ring"],          "led_ring",          MESH_DIR, axle_y, axle_z,
+                 tolerance=0.05, angular=0.02)
+    export_group(groups["ultrasonic"],        "ultrasonic",        MESH_DIR, axle_y, axle_z,
+                 tolerance=0.05, angular=0.02)
+    export_group(groups["line_sensor_left"],  "line_sensor_left",  MESH_DIR, axle_y, axle_z,
+                 tolerance=0.05, angular=0.02)
+    export_group(groups["line_sensor_right"], "line_sensor_right", MESH_DIR, axle_y, axle_z,
+                 tolerance=0.05, angular=0.02)
 
     # ── Individual LED positions ───────────────────────────────────────
     leds = groups["led_individuals"]

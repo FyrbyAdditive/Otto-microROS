@@ -112,7 +112,7 @@
   <joint name="body_joint" type="fixed">
     <parent link="base_link"/>
     <child  link="body_link"/>
-    <origin xyz="0.0231 0.0000 0.0220" rpy="0 0 0"/>
+    <origin xyz="0.0265 -0.0000 0.0220" rpy="0 0 0"/>
   </joint>
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
@@ -198,8 +198,7 @@
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <!--  LED Ring                                                          -->
-  <!--  joint xyz from export_meshes.py:                                 -->
-  <!--    led_ring: joint xyz="0.0231 0.0001 0.0516"                     -->
+  <!--  joint xyz from export_meshes.py output                           -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <link name="led_ring_link">
     <visual>
@@ -276,7 +275,7 @@
   <joint name="ultrasonic_joint" type="fixed">
     <parent link="base_link"/>
     <child  link="ultrasonic_link"/>
-    <origin xyz="0.0465 -0.0000 0.0049" rpy="0 0 0"/>
+    <origin xyz="0.0509 0.0000 0.0200" rpy="0 0 0"/>
   </joint>
 
   <!-- Sensor ray origin — midpoint between transducers, pointing forward -->
