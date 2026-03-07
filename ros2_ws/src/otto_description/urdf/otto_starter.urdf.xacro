@@ -129,7 +129,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry><mesh filename="package://otto_description/meshes/body_clips.stl"/></geometry>
-      <material name="body_clips_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
+      <material name="body_clips_mat"><color rgba="0.03 0.03 0.03 1.0"/></material>
     </visual>
   </link>
   <joint name="body_clips_joint" type="fixed">
