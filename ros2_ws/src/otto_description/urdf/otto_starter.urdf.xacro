@@ -149,6 +149,18 @@
     <origin xyz="0.0230 0.0000 0.0242" rpy="0 0 0"/>
   </joint>
 
+  <link name="body_top_pattern_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/body_top_pattern.stl"/></geometry>
+      <material name="body_top_pattern_mat"><color rgba="0.50 0.50 0.50 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="body_top_pattern_joint" type="fixed">
+    <parent link="base_link"/><child link="body_top_pattern_link"/>
+    <origin xyz="0.0230 0.0000 0.0242" rpy="0 0 0"/>
+  </joint>
+
   <link name="body_top_lines_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>

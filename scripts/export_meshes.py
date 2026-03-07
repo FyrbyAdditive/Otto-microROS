@@ -399,15 +399,23 @@ def main():
     # Logo lines: zlen < 0.5 mm (ultra-thin 0.2 mm surfaces)
     # Main dome sections: zlen ≥ 0.5 mm
 
-    top_all   = name_to_solids.get("Top", [])
-    top_main  = [s for s in top_all if _bb(s).zlen >= 0.5]
-    top_logos = [s for s in top_all if _bb(s).zlen <  0.5]
+    top_all     = name_to_solids.get("Top", [])
+    top_logos   = [s for s in top_all if _bb(s).zlen <  0.5]
+    # 'Top Pattern': flat ~60×60×2 mm disc — grey decorative ring on top cap
+    top_pattern = [s for s in top_all
+                   if _bb(s).zlen >= 0.5 and _bb(s).zlen <= 5.0
+                   and _bb(s).xlen > 50 and _bb(s).ylen > 50]
+    top_main    = [s for s in top_all
+                   if _bb(s).zlen >= 0.5
+                   and s not in top_pattern]
 
     if body_ref:
         jx, jy, jz = body_ref
-        export_stl(top_main,  "body_top",        jx, jy, jz, axle_y, axle_z,
+        export_stl(top_main,    "body_top",         jx, jy, jz, axle_y, axle_z,
                    label="sub-visual of body_link")
-        export_stl(top_logos, "body_top_lines",  jx, jy, jz, axle_y, axle_z,
+        export_stl(top_pattern, "body_top_pattern", jx, jy, jz, axle_y, axle_z,
+                   label="sub-visual of body_link — grey")
+        export_stl(top_logos,   "body_top_lines",   jx, jy, jz, axle_y, axle_z,
                    label="sub-visual of body_link")
     else:
         print("  [skip] body_top / body_top_lines: body_ref not established")
