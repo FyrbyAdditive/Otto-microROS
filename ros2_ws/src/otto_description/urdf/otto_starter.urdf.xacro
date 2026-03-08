@@ -468,38 +468,80 @@
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <!--  Line sensors                                                      -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- ── Line sensor left: board (blue), white parts, black IR ──────── -->
   <link name="line_sensor_left_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://otto_description/meshes/line_sensor_left.stl"/>
-      </geometry>
-      <material name="pcb_green"/>
+      <geometry><mesh filename="package://otto_description/meshes/line_sensor_left_board.stl"/></geometry>
+      <material name="ls_left_board_mat"><color rgba="0.05 0.20 0.80 1.0"/></material>
     </visual>
     <xacro:box_inertia m="0.003" x="0.014" y="0.034" z="0.002"/>
   </link>
-
   <joint name="line_sensor_left_joint" type="fixed">
-    <parent link="base_link"/>
-    <child  link="line_sensor_left_link"/>
-    <origin xyz="0.0347 0.0130 -0.0064" rpy="0 0 0"/>
+    <parent link="base_link"/><child link="line_sensor_left_link"/>
+    <origin xyz="0.0347 0.0130 -0.0065" rpy="0 0 0"/>
   </joint>
 
+  <link name="line_sensor_left_white_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/line_sensor_left_white.stl"/></geometry>
+      <material name="ls_left_white_mat"><color rgba="0.95 0.95 0.95 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="line_sensor_left_white_joint" type="fixed">
+    <parent link="base_link"/><child link="line_sensor_left_white_link"/>
+    <origin xyz="0.0347 0.0130 -0.0065" rpy="0 0 0"/>
+  </joint>
+
+  <link name="line_sensor_left_black_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/line_sensor_left_black.stl"/></geometry>
+      <material name="ls_left_black_mat"><color rgba="0.05 0.05 0.05 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="line_sensor_left_black_joint" type="fixed">
+    <parent link="base_link"/><child link="line_sensor_left_black_link"/>
+    <origin xyz="0.0347 0.0130 -0.0065" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ── Line sensor right: board (blue), white parts, black IR ─────── -->
   <link name="line_sensor_right_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://otto_description/meshes/line_sensor_right.stl"/>
-      </geometry>
-      <material name="pcb_green"/>
+      <geometry><mesh filename="package://otto_description/meshes/line_sensor_right_board.stl"/></geometry>
+      <material name="ls_right_board_mat"><color rgba="0.05 0.20 0.80 1.0"/></material>
     </visual>
     <xacro:box_inertia m="0.003" x="0.014" y="0.034" z="0.002"/>
   </link>
-
   <joint name="line_sensor_right_joint" type="fixed">
-    <parent link="base_link"/>
-    <child  link="line_sensor_right_link"/>
-    <origin xyz="0.0347 -0.0130 -0.0064" rpy="0 0 0"/>
+    <parent link="base_link"/><child link="line_sensor_right_link"/>
+    <origin xyz="0.0347 -0.0130 -0.0065" rpy="0 0 0"/>
+  </joint>
+
+  <link name="line_sensor_right_white_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/line_sensor_right_white.stl"/></geometry>
+      <material name="ls_right_white_mat"><color rgba="0.95 0.95 0.95 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="line_sensor_right_white_joint" type="fixed">
+    <parent link="base_link"/><child link="line_sensor_right_white_link"/>
+    <origin xyz="0.0347 -0.0130 -0.0065" rpy="0 0 0"/>
+  </joint>
+
+  <link name="line_sensor_right_black_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://otto_description/meshes/line_sensor_right_black.stl"/></geometry>
+      <material name="ls_right_black_mat"><color rgba="0.05 0.05 0.05 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="line_sensor_right_black_joint" type="fixed">
+    <parent link="base_link"/><child link="line_sensor_right_black_link"/>
+    <origin xyz="0.0347 -0.0130 -0.0065" rpy="0 0 0"/>
   </joint>
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
