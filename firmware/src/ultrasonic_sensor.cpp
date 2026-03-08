@@ -1,7 +1,6 @@
 // ultrasonic_sensor.cpp — RCWL-9610 Ultrasonic Range Publisher
 // Publishes sensor_msgs/Range on /ultrasonic/range at 10Hz.
-// Uses GPIO 19 for trigger/echo (single-wire mode).
-// Disabled entirely when SERVO_TYPE_SERIAL_BUS=1 (GPIO 18/19 used for servo UART).
+// Uses GPIO 19 for trigger/echo (single-wire mode). Always available.
 
 #include "ultrasonic_sensor.h"
 #include "led_controller.h"
@@ -9,8 +8,6 @@
 #include <Arduino.h>
 #include <sensor_msgs/msg/range.h>
 #include <rmw_microros/time_sync.h>
-
-#if !SERVO_TYPE_SERIAL_BUS
 
 static rcl_publisher_t range_pub;
 static rcl_timer_t range_timer;
@@ -119,13 +116,3 @@ void ultrasonic_standalone_read() {
     led_proximity(distance_m);
 }
 
-#else
-// Stubs when ultrasonic is disabled (serial bus servo mode)
-void ultrasonic_init() {}
-void ultrasonic_create_entities(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator) {
-    (void)node; (void)support; (void)allocator;
-}
-void ultrasonic_add_to_executor(rclc_executor_t *executor) { (void)executor; }
-void ultrasonic_destroy_entities(rcl_node_t *node) { (void)node; }
-void ultrasonic_standalone_read() {}
-#endif

@@ -85,14 +85,8 @@ static rclc_support_t support;
 static rcl_node_t node;
 static rclc_executor_t executor;
 
-// Executor handle count:
-//   3 subscriptions (cmd_vel, leds, buzzer)
-//   3 timers (ultrasonic, line_sensors, battery) — ultrasonic may be 0 if serial bus servo mode
-#if SERVO_TYPE_SERIAL_BUS
-#define EXECUTOR_HANDLE_COUNT 5  // 3 subs + 2 timers (no ultrasonic timer)
-#else
-#define EXECUTOR_HANDLE_COUNT 6  // 3 subs + 3 timers
-#endif
+// Executor handle count: 3 subscriptions (cmd_vel, leds, buzzer) + 3 timers (ultrasonic, line_sensors, battery)
+#define EXECUTOR_HANDLE_COUNT 6
 
 // Error handling macros
 #define RCCHECK(fn) { rcl_ret_t rc = (fn); if (rc != RCL_RET_OK) { return false; } }

@@ -83,8 +83,8 @@ static void cmd_vel_callback(const void *msgin) {
 
 void drive_init() {
 #if SERVO_TYPE_SERIAL_BUS
-    Serial1.begin(SERVO_BUS_BAUD, SERIAL_8N1, SERVO_BUS_RXD, SERVO_BUS_TXD);
-    sms_sts.pSerial = &Serial1;
+    Serial2.begin(SERVO_BUS_BAUD, SERIAL_8N1, SERVO_BUS_RXD, SERVO_BUS_TXD);
+    sms_sts.pSerial = &Serial2;
     delay(100);
     // Set both servos to wheel (continuous rotation) mode
     sms_sts.WheelMode(SERVO_BUS_ID_LEFT);

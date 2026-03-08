@@ -21,12 +21,11 @@
 // GPIO Pin Definitions — Starter Kit (Wheeled Variant)
 // ============================================================
 
-// Connector 1: Ultrasonic sensor (RCWL-9610) + NeoPixel LEDs
-// When SERVO_TYPE_SERIAL_BUS=1, these become UART RX/TX for servo bus
+// Connector 1: Ultrasonic sensor (RCWL-9610) + NeoPixel LEDs (always available)
 #define PIN_US_TRIG_ECHO      19   // Connector 1 signal — trigger/echo (single-wire)
 #define PIN_US_NEOPIXEL       18   // Connector 1 signal — 6x WS2812B on sensor PCB
 
-// Connector 2: Unused in Starter Kit (MP3 player or encoder)
+// Connector 2: Serial bus servo UART (when SERVO_TYPE_SERIAL_BUS=1)
 #define PIN_CONN2_A           16
 #define PIN_CONN2_B           17
 
@@ -65,11 +64,11 @@
 
 // ============================================================
 // Serial Bus Servo Configuration (when SERVO_TYPE_SERIAL_BUS=1)
-// Uses Connector 1 pins as UART — ultrasonic sensor unavailable
+// Uses Connector 2 pins as UART2 — ultrasonic/US LEDs remain available
 // ============================================================
 #if SERVO_TYPE_SERIAL_BUS
-#define SERVO_BUS_RXD         18   // Connector 1, repurposed as UART RX
-#define SERVO_BUS_TXD         19   // Connector 1, repurposed as UART TX
+#define SERVO_BUS_RXD         16   // Connector 2, UART2 RX
+#define SERVO_BUS_TXD         17   // Connector 2, UART2 TX
 #define SERVO_BUS_BAUD   1000000   // 1 Mbaud (Feetech default)
 #define SERVO_BUS_ID_LEFT      1   // Bus servo ID for left wheel
 #define SERVO_BUS_ID_RIGHT     2   // Bus servo ID for right wheel

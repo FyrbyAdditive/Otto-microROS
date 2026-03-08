@@ -2,7 +2,7 @@
 // See led_controller.h for the full /leds command and /led_state publish protocol.
 //
 // 13-LED ring on GPIO 4 (always available).
-// 6 ultrasonic LEDs on GPIO 18 (only when SERVO_TYPE_SERIAL_BUS=0).
+// 6 ultrasonic LEDs on GPIO 18 (always available — servo bus uses Connector 2).
 
 #include "led_controller.h"
 #include "otto_config.h"
@@ -29,9 +29,7 @@ static bool     led_override_indefinite = false;
 
 // ── Hardware ──────────────────────────────────────────────────────────────────
 static Adafruit_NeoPixel ring(LED_RING_COUNT, PIN_LED_RING, NEO_GRB + NEO_KHZ800);
-#if !SERVO_TYPE_SERIAL_BUS
 static Adafruit_NeoPixel us_leds(LED_US_COUNT, PIN_US_NEOPIXEL, NEO_GRB + NEO_KHZ800);
-#endif
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 static void set_strip_color(Adafruit_NeoPixel &strip, uint8_t r, uint8_t g, uint8_t b) {
@@ -117,19 +115,13 @@ static void led_callback(const void *msgin) {
 
     if (mode == 0 && payload_len >= 3) {
         if (do_ring) set_strip_color(ring, payload[0], payload[1], payload[2]);
-#if !SERVO_TYPE_SERIAL_BUS
         if (do_us) set_strip_color(us_leds, payload[0], payload[1], payload[2]);
-#endif
     } else if (mode == 1 && payload_len > 0) {
         if (do_ring) set_strip_individual(ring, payload, payload_len);
-#if !SERVO_TYPE_SERIAL_BUS
         if (do_us) set_strip_individual(us_leds, payload, payload_len);
-#endif
     } else if (mode == 2) {
         if (do_ring) set_strip_color(ring, 0, 0, 0);
-#if !SERVO_TYPE_SERIAL_BUS
         if (do_us) set_strip_color(us_leds, 0, 0, 0);
-#endif
     }
 
     if (do_ring) led_state_publish();
@@ -140,11 +132,9 @@ void led_init() {
     ring.begin();
     ring.setBrightness(50);
     ring.show();
-#if !SERVO_TYPE_SERIAL_BUS
     us_leds.begin();
     us_leds.setBrightness(50);
     us_leds.show();
-#endif
 }
 
 void led_create_entities(rcl_node_t *node, rclc_support_t *support,
@@ -182,9 +172,7 @@ void led_destroy_entities(rcl_node_t *node) {
 
 void led_off() {
     set_strip_color(ring, 0, 0, 0);
-#if !SERVO_TYPE_SERIAL_BUS
     set_strip_color(us_leds, 0, 0, 0);
-#endif
 }
 
 void led_status_color(uint8_t r, uint8_t g, uint8_t b) {
@@ -206,7 +194,6 @@ void led_ring_show() {
 }
 
 void led_proximity(float distance_m) {
-#if !SERVO_TYPE_SERIAL_BUS
     if (distance_m <= 0.0f || isinf(distance_m) || isnan(distance_m)) {
         set_strip_color(us_leds, 0, 0, 0);
         return;
@@ -226,7 +213,4 @@ void led_proximity(float distance_m) {
         g = (uint8_t)(80.0f + 175.0f * t);
     }
     set_strip_color(us_leds, r, g, b);
-#else
-    (void)distance_m;
-#endif
 }
