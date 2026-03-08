@@ -45,6 +45,13 @@ def generate_launch_description():
         arguments=['-d', rviz_config],
         output='screen')
 
+    # Static odom→base_footprint at origin so fixed frame 'odom' resolves
+    static_odom_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_footprint'],
+        output='screen')
+
     # Sensor visualiser — publishes LED/sonar/line sensor markers for RViz
     visualizer = Node(
         package='otto_bringup',
@@ -56,6 +63,7 @@ def generate_launch_description():
         variant_arg,
         robot_state_pub,
         joint_state_pub,
+        static_odom_tf,
         visualizer,
         rviz,
     ])
