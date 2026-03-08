@@ -8,6 +8,7 @@ Panels:
         - /RobotModel1
         - /TF1
         - /MarkerArray1
+        - /MarkerArray2
         - /Marker1
         - /LaserScan1
         - /Range1
@@ -81,6 +82,19 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /otto/led_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /otto/us_led_markers
       Value: true
     - Class: rviz_default_plugins/Marker
       Enabled: true
