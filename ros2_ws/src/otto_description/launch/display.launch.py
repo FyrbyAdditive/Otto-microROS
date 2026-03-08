@@ -45,9 +45,17 @@ def generate_launch_description():
         arguments=['-d', rviz_config],
         output='screen')
 
+    # Sensor visualiser — publishes LED/sonar/line sensor markers for RViz
+    visualizer = Node(
+        package='otto_bringup',
+        executable='otto_visualizer.py',
+        name='otto_visualizer',
+        output='screen')
+
     return LaunchDescription([
         variant_arg,
         robot_state_pub,
         joint_state_pub,
+        visualizer,
         rviz,
     ])

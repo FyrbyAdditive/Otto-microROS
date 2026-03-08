@@ -126,13 +126,14 @@ class OttoVisualizer(Node):
             m.type            = Marker.CYLINDER
             m.action          = Marker.ADD
             m.lifetime        = lifetime
-            m.scale.x = m.scale.y = 0.015   # 15 mm diameter — large enough to see easily
-            m.scale.z          = 0.003       # 3 mm thin disc
+            m.scale.x = m.scale.y = 0.030   # 30 mm diameter
+            m.scale.z          = 0.005       # 5 mm tall — visible from side
             r, g, b = _line_colour(adc)
-            m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, 0.9
-            # Offset -0.015 m in Z to push the disc below the chassis floor
-            # (link frame is 18 mm above ground, chassis bottom ~12 mm — disc lands ~3 mm above floor)
-            m.pose.position.z    = -0.015
+            m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, 1.0
+            # Place disc just above the floor plane (~5 mm above ground).
+            # line_sensor link is 18 mm above ground; offset -0.013 m puts
+            # disc centre at 5 mm above ground, clearly visible under robot.
+            m.pose.position.z    = -0.013
             m.pose.orientation.w = 1.0
             array.markers.append(m)
 
