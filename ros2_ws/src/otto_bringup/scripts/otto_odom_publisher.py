@@ -2,7 +2,8 @@
 """Dead-reckoning odometry from cmd_vel for Otto Starter.
 
 Integrates linear.x and angular.z from /cmd_vel to produce odometry.
-Publishes nav_msgs/Odometry on /odom and TF odom -> base_footprint.
+Publishes nav_msgs/Odometry on /odom, TF odom -> base_footprint,
+and sensor_msgs/JointState for wheel rotation (replaces joint_state_publisher).
 
 WARNING: With no wheel encoders, odometry drifts significantly.
 This is expected for an educational demo with open-loop servos.
@@ -14,7 +15,11 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from geometry_msgs.msg import Twist, TransformStamped, Quaternion
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import JointState
 from tf2_ros import TransformBroadcaster
+
+WHEEL_RADIUS = 0.0245  # m — matches URDF/firmware
+WHEEL_BASE   = 0.0814  # m — matches URDF/firmware
 
 
 def euler_to_quaternion(yaw):
@@ -37,6 +42,8 @@ class OdomPublisher(Node):
         self.theta = 0.0
         self.linear_x = 0.0
         self.angular_z = 0.0
+        self.left_wheel_angle  = 0.0  # rad, accumulated
+        self.right_wheel_angle = 0.0
         self.last_time = self.get_clock().now()
         self.last_cmd_time = self.get_clock().now()
         self.cmd_vel_timeout = 0.5  # seconds, matches firmware CMD_VEL_TIMEOUT_MS
@@ -46,8 +53,9 @@ class OdomPublisher(Node):
         self.cmd_vel_sub = self.create_subscription(
             Twist, 'cmd_vel', self.cmd_vel_callback, qos)
 
-        # Publish odometry
-        self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
+        # Publish odometry and joint states
+        self.odom_pub  = self.create_publisher(Odometry,    'odom', 10)
+        self.joint_pub = self.create_publisher(JointState,  'joint_states', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
 
         # Integration timer at 50Hz
@@ -75,10 +83,15 @@ class OdomPublisher(Node):
             self.linear_x = 0.0
             self.angular_z = 0.0
 
-        # Integrate pose
+        # Integrate pose and wheel angles
         self.theta += self.angular_z * dt
         self.x += self.linear_x * math.cos(self.theta) * dt
         self.y += self.linear_x * math.sin(self.theta) * dt
+
+        v_left  = self.linear_x - self.angular_z * WHEEL_BASE / 2.0
+        v_right = self.linear_x + self.angular_z * WHEEL_BASE / 2.0
+        self.left_wheel_angle  += (v_left  / WHEEL_RADIUS) * dt
+        self.right_wheel_angle += (v_right / WHEEL_RADIUS) * dt
 
         q = euler_to_quaternion(self.theta)
 
@@ -114,6 +127,14 @@ class OdomPublisher(Node):
         odom.twist.covariance[35] = 0.2
 
         self.odom_pub.publish(odom)
+
+        # Wheel joint states so robot_state_publisher can animate wheels
+        js = JointState()
+        js.header.stamp = now.to_msg()
+        js.name     = ['left_wheel_joint', 'right_wheel_joint']
+        js.position = [self.left_wheel_angle, self.right_wheel_angle]
+        js.velocity = [v_left / WHEEL_RADIUS, v_right / WHEEL_RADIUS]
+        self.joint_pub.publish(js)
 
 
 def main(args=None):

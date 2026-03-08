@@ -65,14 +65,6 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description}],
         output='screen')
 
-    # Joint state publisher — provides /joint_states for non-fixed joints
-    # (wheel continuous joints) so robot_state_publisher can compute TF.
-    # Without encoders, wheels stay at position 0 which is fine for nav.
-    joint_state_pub = Node(
-        package='joint_state_publisher',
-        executable='joint_state_publisher',
-        output='screen')
-
     # Dead-reckoning odometry
     odom_pub = Node(
         package='otto_bringup',
@@ -102,7 +94,6 @@ def generate_launch_description():
         agent_docker,
         agent_native,
         robot_state_pub,
-        joint_state_pub,
         odom_pub,
         scan_converter,
         visualizer,
