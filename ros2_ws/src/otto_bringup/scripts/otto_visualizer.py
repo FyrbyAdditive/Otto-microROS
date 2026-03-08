@@ -126,10 +126,13 @@ class OttoVisualizer(Node):
             m.type            = Marker.CYLINDER
             m.action          = Marker.ADD
             m.lifetime        = lifetime
-            m.scale.x = m.scale.y = 0.010   # 10 mm diameter
-            m.scale.z          = 0.002       # 2 mm thin disc
+            m.scale.x = m.scale.y = 0.015   # 15 mm diameter — large enough to see easily
+            m.scale.z          = 0.003       # 3 mm thin disc
             r, g, b = _line_colour(adc)
             m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, 0.9
+            # Offset -0.015 m in Z to push the disc below the chassis floor
+            # (link frame is 18 mm above ground, chassis bottom ~12 mm — disc lands ~3 mm above floor)
+            m.pose.position.z    = -0.015
             m.pose.orientation.w = 1.0
             array.markers.append(m)
 
