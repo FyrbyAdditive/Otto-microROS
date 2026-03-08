@@ -465,6 +465,43 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
+  <!-- 6× WS2812B NeoPixels on ultrasonic PCB — 3 per emitter at r=4mm.
+       Numbering: 0-2 = right emitter, 3-5 = left emitter.
+       Within each group: index 0/3 = rightmost LED (−Y), then 120° CCW steps.
+       Firmware LED index → frame mapping TBD (calibrate physically). -->
+  <!-- Right emitter  centre y=−0.0130 -->
+  <link name="us_led_0_link"/>
+  <joint name="us_led_0_joint" type="fixed">
+    <parent link="ultrasonic_link"/><child link="us_led_0_link"/>
+    <origin xyz="0.0000 -0.0170  0.0000"/>
+  </joint>
+  <link name="us_led_1_link"/>
+  <joint name="us_led_1_joint" type="fixed">
+    <parent link="ultrasonic_link"/><child link="us_led_1_link"/>
+    <origin xyz="0.0000 -0.0110  0.0035"/>
+  </joint>
+  <link name="us_led_2_link"/>
+  <joint name="us_led_2_joint" type="fixed">
+    <parent link="ultrasonic_link"/><child link="us_led_2_link"/>
+    <origin xyz="0.0000 -0.0110 -0.0035"/>
+  </joint>
+  <!-- Left emitter  centre y=+0.0130 -->
+  <link name="us_led_3_link"/>
+  <joint name="us_led_3_joint" type="fixed">
+    <parent link="ultrasonic_link"/><child link="us_led_3_link"/>
+    <origin xyz="0.0000  0.0090  0.0000"/>
+  </joint>
+  <link name="us_led_4_link"/>
+  <joint name="us_led_4_joint" type="fixed">
+    <parent link="ultrasonic_link"/><child link="us_led_4_link"/>
+    <origin xyz="0.0000  0.0150  0.0035"/>
+  </joint>
+  <link name="us_led_5_link"/>
+  <joint name="us_led_5_joint" type="fixed">
+    <parent link="ultrasonic_link"/><child link="us_led_5_link"/>
+    <origin xyz="0.0000  0.0150 -0.0035"/>
+  </joint>
+
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <!--  Line sensors                                                      -->
   <!-- ══════════════════════════════════════════════════════════════════ -->

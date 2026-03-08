@@ -26,6 +26,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 
 NUM_LEDS     = 13
+NUM_US_LEDS  = 6      # WS2812B on ultrasonic PCB (3 per emitter)
 SONAR_FAR    = 0.5    # m — green at this distance
 SONAR_NEAR   = 0.02   # m — red at this distance
 LINE_ADC_MAX = 500    # practical max at ~18mm sensing distance
@@ -40,6 +41,21 @@ LED_FRAME_MAP = [6, 4, 3, 2, 1, 0, 7, 12, 11, 10, 9, 8, 5]
 # Scale up for RViz visibility — raw values like blue=30 look near-black.
 LED_VIZ_SCALE = 5.0
 
+
+
+def _us_led_colour(distance: float):
+    """Mirror firmware led_proximity() colour logic (red=near, orange=mid, green=far)."""
+    if distance <= 0.0 or distance == float('inf') or distance != distance:
+        return (0.0, 0.0, 0.0)
+    d = max(0.02, min(1.5, distance))
+    if d < 0.3:
+        t = (d - 0.02) / (0.3 - 0.02)
+        r, g = 1.0, (80.0 / 255.0) * t
+    else:
+        t = min(1.0, (d - 0.3) / (1.0 - 0.3))
+        r, g = (255.0 / 255.0) * (1.0 - t), (80.0 + 175.0 * t) / 255.0
+    # Firmware setBrightness(50) → scale up for RViz visibility
+    return (min(1.0, r * LED_VIZ_SCALE), min(1.0, g * LED_VIZ_SCALE), 0.0)
 
 
 def _sonar_colour(distance: float):
@@ -63,8 +79,9 @@ class OttoVisualizer(Node):
         self._sonar_dist  = SONAR_FAR
         self._line_adc    = [LINE_ADC_MAX, LINE_ADC_MAX]   # [left, right] default clear
 
-        self._pub_leds  = self.create_publisher(MarkerArray, '/otto/led_markers', 10)
-        self._pub_sonar = self.create_publisher(Marker,      '/otto/sonar_marker', 10)
+        self._pub_leds    = self.create_publisher(MarkerArray, '/otto/led_markers', 10)
+        self._pub_us_leds = self.create_publisher(MarkerArray, '/otto/us_led_markers', 10)
+        self._pub_sonar   = self.create_publisher(Marker,      '/otto/sonar_marker', 10)
 
         # Match firmware BEST_EFFORT publishers so ROS2 QoS negotiation succeeds
         best_effort = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -183,6 +200,24 @@ class OttoVisualizer(Node):
         r, g, b = _sonar_colour(d)
         m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, 0.8
         self._pub_sonar.publish(m)
+
+        # Ultrasonic LED spheres — colour mirrors firmware led_proximity() logic
+        us_array = MarkerArray()
+        r, g, b = _us_led_colour(self._sonar_dist)
+        for i in range(NUM_US_LEDS):
+            um = Marker()
+            um.header.stamp    = now
+            um.header.frame_id = f'us_led_{i}_link'
+            um.ns              = 'otto_us_leds'
+            um.id              = i
+            um.type            = Marker.SPHERE
+            um.action          = Marker.ADD
+            um.lifetime        = lifetime
+            um.scale.x = um.scale.y = um.scale.z = 0.008  # 8 mm sphere
+            um.color.r, um.color.g, um.color.b, um.color.a = r, g, b, 1.0
+            um.pose.orientation.w = 1.0
+            us_array.markers.append(um)
+        self._pub_us_leds.publish(us_array)
 
 
 def main(args=None):
