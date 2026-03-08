@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """Dead-reckoning odometry from cmd_vel for Otto Starter.
 
 Integrates linear.x and angular.z from /cmd_vel to produce odometry.

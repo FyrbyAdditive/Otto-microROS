@@ -56,6 +56,19 @@ static int direction_to_led(double linear, double angular) {
 }
 
 void led_ring_status_update() {
+    // While a timed ROS command is active, suppress firmware animation.
+    // Track transitions so the ring redraws immediately when override expires.
+    static bool was_overridden = false;
+    bool overridden = led_ring_overridden();
+    if (overridden) {
+        was_overridden = true;
+        return;
+    }
+    if (was_overridden) {
+        was_overridden = false;
+        dirty = true;  // force redraw now that override expired
+    }
+
     if (!dirty) return;
     dirty = false;
 

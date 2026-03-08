@@ -111,7 +111,32 @@ else
     info "Workspace already sourced in ~/.bashrc."
 fi
 
-# ── 5. Done ───────────────────────────────────────────────────────────────────
+# ── 6. Firmware flashing tools ────────────────────────────────────────────────
+info "Checking PlatformIO (firmware flashing tool)..."
+if ! python3 -m platformio --version >/dev/null 2>&1 && ! ~/.local/bin/pio --version >/dev/null 2>&1; then
+    info "Installing PlatformIO..."
+    pip install --user platformio
+    # Create the penv virtualenv that micro_ros_platformio expects
+    python3 -m venv ~/.platformio/penv
+    # Install colcon and lark inside the penv for micro-ROS build
+    source ~/.platformio/penv/bin/activate && pip install --quiet colcon-common-extensions lark
+    # Install lark for the system Python too (used by rosidl generators)
+    pip install lark
+    info "PlatformIO installed."
+else
+    info "PlatformIO already installed."
+fi
+
+# Add user to dialout group for USB serial access (needed to flash firmware)
+if ! groups | grep -q dialout; then
+    info "Adding $USER to dialout group (for USB serial / firmware flashing)..."
+    sudo usermod -a -G dialout "$USER"
+    warning "You must log out and back in (or run 'newgrp dialout') before flashing."
+else
+    info "User already in dialout group."
+fi
+
+# ── 7. Done ───────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}  Setup complete!${NC}"
 echo ""

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """Convert ultrasonic Range messages to LaserScan for SLAM compatibility.
 
 Subscribes to /ultrasonic/range (sensor_msgs/Range).
