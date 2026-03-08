@@ -9,6 +9,7 @@ Panels:
         - /TF1
         - /MarkerArray1
         - /Marker1
+        - /LaserScan1
         - /Range1
       Splitter Ratio: 0.5
     Tree Height: 600
@@ -94,6 +95,21 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /otto/sonar_marker
       Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: LaserScan
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /scan
+      Value: true
+      Size (m): 0.02
+      Style: Spheres
+      Color: 255; 128; 0
+      Alpha: 1.0
     - Class: rviz_default_plugins/Range
       Enabled: true
       Name: Range
@@ -102,11 +118,11 @@ Visualization Manager:
         Durability Policy: Volatile
         Filter size: 10
         History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /otto/ultrasonic/range
+        Reliability Policy: Best Effort
+        Value: /ultrasonic/range
       Value: true
       Color: 0; 255; 0
-      Alpha: 0.5
+      Alpha: 0.3
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
