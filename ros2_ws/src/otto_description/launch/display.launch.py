@@ -34,22 +34,19 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description}],
         output='screen')
 
-    joint_state_pub = Node(
-        package='joint_state_publisher_gui',
-        executable='joint_state_publisher_gui',
-        output='screen')
-
     rviz = Node(
         package='rviz2',
         executable='rviz2',
         arguments=['-d', rviz_config],
         output='screen')
 
-    # Static odom→base_footprint at origin so fixed frame 'odom' resolves
-    static_odom_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_footprint'],
+    # Dead-reckoning odometry: publishes odom→base_footprint TF + /joint_states
+    # with wheel angles derived from /cmd_vel. When no robot is connected,
+    # velocities are zero so the robot sits at the origin — same as a static TF.
+    odom_pub = Node(
+        package='otto_bringup',
+        executable='otto_odom_publisher.py',
+        name='otto_odom_publisher',
         output='screen')
 
     # Sensor visualiser — publishes LED/sonar/line sensor markers for RViz
@@ -62,8 +59,7 @@ def generate_launch_description():
     return LaunchDescription([
         variant_arg,
         robot_state_pub,
-        joint_state_pub,
-        static_odom_tf,
+        odom_pub,
         visualizer,
         rviz,
     ])
