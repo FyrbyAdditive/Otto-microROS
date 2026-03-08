@@ -150,8 +150,11 @@
 // ============================================================
 // micro-ROS Agent Ping
 // ============================================================
-#define AGENT_PING_TIMEOUT_MS  100
-#define AGENT_PING_ATTEMPTS      1
+// WiFi UDP is lossy: use multiple attempts so a single dropped packet
+// does not trigger a full disconnect/reconnect cycle.
+// Total disconnect detection = TIMEOUT * ATTEMPTS = 600ms.
+#define AGENT_PING_TIMEOUT_MS  200  // ms per attempt (was 100)
+#define AGENT_PING_ATTEMPTS      3  // attempts before declaring lost (was 1)
 #define AGENT_RECONNECT_MS     500  // Delay between reconnection attempts
 
 #endif // OTTO_CONFIG_H

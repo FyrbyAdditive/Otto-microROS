@@ -242,14 +242,13 @@ void loop() {
             break;
 
         case AGENT_DISCONNECTED:
-            // Disconnected — red flash + warning tone
+            destroy_entities();
+            Serial.println("[Otto] Entities destroyed, waiting for agent...");
+            // Disconnected — red flash + warning tone (after destroy so no DDS delay)
             led_status_color(255, 0, 0);  // Red
             buzzer_tone(440, 150);
             delay(50);
             buzzer_tone(330, 200);
-
-            destroy_entities();
-            Serial.println("[Otto] Entities destroyed, waiting for agent...");
             state = WAITING_AGENT;
             last_state_change = millis();
             digitalWrite(PIN_LED_BUILTIN, LOW);

@@ -31,7 +31,7 @@ static void range_timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
 
     // Read echo pulse width
     pinMode(PIN_US_TRIG_ECHO, INPUT);
-    unsigned long duration = pulseIn(PIN_US_TRIG_ECHO, HIGH, 30000);  // 30ms timeout (~5m)
+    unsigned long duration = pulseIn(PIN_US_TRIG_ECHO, HIGH, 23200);  // 23.2ms = 4m max range
 
     float distance_m;
     if (duration == 0) {
@@ -101,7 +101,7 @@ static float ultrasonic_measure() {
 
     // Read echo pulse width
     pinMode(PIN_US_TRIG_ECHO, INPUT);
-    unsigned long duration = pulseIn(PIN_US_TRIG_ECHO, HIGH, 30000);
+    unsigned long duration = pulseIn(PIN_US_TRIG_ECHO, HIGH, 23200);
 
     if (duration == 0) return INFINITY;
     float distance_m = (duration * 0.000343f) / 2.0f;
