@@ -46,6 +46,39 @@ enum AgentState {
 
 static AgentState state = WAITING_AGENT;
 
+// WiFi credentials at file scope so reconnection after a drop can re-use them
+static char g_ssid[] = WIFI_SSID;
+static char g_pass[] = WIFI_PASSWORD;
+
+// Lock WiFi to the currently connected BSSID to prevent mid-session roaming.
+// Called after initial connect and after each drop-triggered reconnect.
+static void wifi_lock_bssid() {
+    uint8_t *bssid = WiFi.BSSID();
+    int channel = WiFi.channel();
+    Serial.printf("[Otto] Locking BSSID %02X:%02X:%02X:%02X:%02X:%02X ch%d\n",
+        bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5], channel);
+    WiFi.begin(g_ssid, g_pass, channel, bssid);
+    unsigned long t = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - t < 10000) delay(100);
+}
+
+// Reconnect to WiFi with free AP selection, then re-lock to whatever AP is chosen.
+// Only called from WAITING_AGENT when WiFi itself has dropped (not a micro-ROS disconnect).
+static void wifi_reconnect_free() {
+    Serial.println("[Otto] WiFi dropped — reconnecting (free AP selection)...");
+    led_status_color(255, 200, 0);  // Yellow
+    WiFi.begin(g_ssid, g_pass);
+    unsigned long t = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - t < 20000) delay(200);
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.print("[Otto] WiFi reconnected: ");
+        Serial.println(WiFi.localIP());
+        wifi_lock_bssid();
+    } else {
+        Serial.println("[Otto] WiFi reconnect failed, will retry...");
+    }
+}
+
 // micro-ROS core handles
 static rcl_allocator_t allocator;
 static rclc_support_t support;
@@ -117,6 +150,24 @@ static void destroy_entities() {
 void setup() {
     Serial.begin(115200);
 
+    // Log reset reason — helps diagnose brownout/watchdog resets
+    {
+        esp_reset_reason_t reason = esp_reset_reason();
+        const char* rs;
+        switch (reason) {
+            case ESP_RST_POWERON:   rs = "POWER_ON";      break;
+            case ESP_RST_SW:        rs = "SOFTWARE";       break;
+            case ESP_RST_PANIC:     rs = "PANIC/CRASH";    break;
+            case ESP_RST_INT_WDT:   rs = "INT_WATCHDOG";  break;
+            case ESP_RST_TASK_WDT:  rs = "TASK_WATCHDOG"; break;
+            case ESP_RST_WDT:       rs = "WATCHDOG";       break;
+            case ESP_RST_DEEPSLEEP: rs = "DEEP_SLEEP";     break;
+            case ESP_RST_BROWNOUT:  rs = "BROWNOUT *** CHECK BATTERY/POWER ***"; break;
+            default:                rs = "UNKNOWN";        break;
+        }
+        Serial.printf("[Otto] Reset reason: %s\n", rs);
+    }
+
     // Status LED
     pinMode(PIN_LED_BUILTIN, OUTPUT);
     digitalWrite(PIN_LED_BUILTIN, LOW);
@@ -155,9 +206,22 @@ void setup() {
     // Connect WiFi and register micro-ROS UDP transport
     IPAddress agent_ip;
     agent_ip.fromString(AGENT_IP);
-    char ssid[] = WIFI_SSID;
-    char pass[] = WIFI_PASSWORD;
-    set_microros_wifi_transports(ssid, pass, agent_ip, AGENT_PORT);
+    set_microros_wifi_transports(g_ssid, g_pass, agent_ip, AGENT_PORT);
+
+    // Reduce TX power: default 20dBm peaks cause large current spikes from battery.
+    // 13dBm is plenty for home use and cuts peak draw by ~75%.
+    WiFi.setTxPower(WIFI_POWER_13dBm);
+
+    // Disable modem sleep — prevents missed beacons that cause phantom disconnects.
+    WiFi.setSleep(false);
+
+    // Disable auto-reconnect; we manage reconnection manually in WAITING_AGENT
+    // so we can do a free-AP reconnect (no stale BSSID lock) after a real WiFi drop.
+    WiFi.setAutoReconnect(false);
+
+    // Lock to the connected BSSID — prevents the ESP32 from roaming mid-session
+    // when 802.11k/r/v BSS Transition requests arrive from the access point.
+    wifi_lock_bssid();
 
     Serial.print("[Otto] WiFi IP: ");
     Serial.println(WiFi.localIP());
@@ -175,6 +239,13 @@ void loop() {
 
     switch (state) {
         case WAITING_AGENT:
+            // If WiFi itself dropped, reconnect freely (pick best AP) then re-lock BSSID
+            if (WiFi.status() != WL_CONNECTED) {
+                wifi_reconnect_free();
+                last_state_change = millis();
+                break;
+            }
+
             // Blink built-in LED + pulse cyan ring while searching for agent
             digitalWrite(PIN_LED_BUILTIN, (millis() / 500) % 2);
             {

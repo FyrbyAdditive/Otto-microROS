@@ -31,7 +31,7 @@ static void range_timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
 
     // Read echo pulse width
     pinMode(PIN_US_TRIG_ECHO, INPUT);
-    unsigned long duration = pulseIn(PIN_US_TRIG_ECHO, HIGH, 23200);  // 23.2ms = 4m max range
+    unsigned long duration = pulseIn(PIN_US_TRIG_ECHO, HIGH, US_PULSE_TIMEOUT_US);
 
     float distance_m;
     if (duration == 0) {

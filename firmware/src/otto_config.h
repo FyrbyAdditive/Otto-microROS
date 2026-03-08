@@ -127,6 +127,7 @@
 // Sensor Timing (milliseconds)
 // ============================================================
 #define US_PUBLISH_PERIOD_MS      100   // 10 Hz ultrasonic
+#define US_PULSE_TIMEOUT_US     11700   // 11.7ms = 2m max range (reduces executor block time)
 #define LINE_PUBLISH_PERIOD_MS     50   // 20 Hz line sensors
 #define BATTERY_PUBLISH_PERIOD_MS 1000  // 1 Hz battery
 
@@ -153,8 +154,8 @@
 // WiFi UDP is lossy: use multiple attempts so a single dropped packet
 // does not trigger a full disconnect/reconnect cycle.
 // Total disconnect detection = TIMEOUT * ATTEMPTS = 600ms.
-#define AGENT_PING_TIMEOUT_MS  200  // ms per attempt (was 100)
-#define AGENT_PING_ATTEMPTS      3  // attempts before declaring lost (was 1)
+#define AGENT_PING_TIMEOUT_MS  500  // ms per attempt — 500ms survives a WiFi roam event
+#define AGENT_PING_ATTEMPTS      3  // attempts before declaring lost (1500ms total tolerance)
 #define AGENT_RECONNECT_MS     500  // Delay between reconnection attempts
 
 #endif // OTTO_CONFIG_H
