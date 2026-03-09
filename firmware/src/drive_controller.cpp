@@ -26,8 +26,6 @@ static Servo servo_left;
 static Servo servo_right;
 #endif
 
-// Forward declaration
-void drive_attach();
 
 // cmd_vel callback — differential drive kinematics
 static void cmd_vel_callback(const void *msgin) {
@@ -67,15 +65,8 @@ static void cmd_vel_callback(const void *msgin) {
     int us_left  = constrain(neutral_left  + offset_left,  SERVO_MIN_US, SERVO_MAX_US);
     int us_right = constrain(neutral_right - offset_right,  SERVO_MIN_US, SERVO_MAX_US);  // Inverted (mirror-mounted)
 
-    // If both wheels are at neutral, detach to eliminate any residual PWM jitter
-    if (offset_left == 0 && offset_right == 0) {
-        drive_stop();
-        return;
-    }
-
-    // Re-attach servos if they were detached by a previous stop
-    drive_attach();
-
+    // Write commanded values directly — servos are always attached.
+    // When offset is zero (dead band), us_left/us_right already equal neutral.
     servo_left.writeMicroseconds(us_left);
     servo_right.writeMicroseconds(us_right);
 #endif
@@ -118,24 +109,14 @@ void drive_stop() {
     sms_sts.WriteSpe(SERVO_BUS_ID_LEFT, 0, 0);
     sms_sts.WriteSpe(SERVO_BUS_ID_RIGHT, 0, 0);
 #else
-    // Detach stops the PWM signal entirely — no creep from miscalibrated neutral
-    servo_left.detach();
-    servo_right.detach();
+    // Send neutral pulse — servos stay attached and receive a valid stop signal.
+    // Never detach during operation: removing PWM from a continuous rotation servo
+    // causes undefined behaviour on reattach (LEDC channel reallocation glitch).
+    servo_left.writeMicroseconds(SERVO_STOP_US + SERVO_LEFT_TRIM);
+    servo_right.writeMicroseconds(SERVO_STOP_US + SERVO_RIGHT_TRIM);
 #endif
 }
 
-void drive_attach() {
-#if !SERVO_TYPE_SERIAL_BUS
-    if (!servo_left.attached()) {
-        servo_left.attach(PIN_SERVO_LEFT, SERVO_MIN_US, SERVO_MAX_US);
-        servo_left.writeMicroseconds(SERVO_STOP_US + SERVO_LEFT_TRIM);
-    }
-    if (!servo_right.attached()) {
-        servo_right.attach(PIN_SERVO_RIGHT, SERVO_MIN_US, SERVO_MAX_US);
-        servo_right.writeMicroseconds(SERVO_STOP_US + SERVO_RIGHT_TRIM);
-    }
-#endif
-}
 
 void drive_check_timeout() {
     if (last_cmd_vel_time > 0 && (millis() - last_cmd_vel_time > CMD_VEL_TIMEOUT_MS)) {

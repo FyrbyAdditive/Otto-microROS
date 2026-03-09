@@ -45,35 +45,61 @@ enum AgentState {
 };
 
 static AgentState state = WAITING_AGENT;
+static int ping_fail_count = 0;  // consecutive ping failures; reset on success or reconnect
 
 // WiFi credentials at file scope so reconnection after a drop can re-use them
 static char g_ssid[] = WIFI_SSID;
 static char g_pass[] = WIFI_PASSWORD;
 
-// Lock WiFi to the currently connected BSSID to prevent mid-session roaming.
-// Called after initial connect and after each drop-triggered reconnect.
-static void wifi_lock_bssid() {
-    uint8_t *bssid = WiFi.BSSID();
-    int channel = WiFi.channel();
-    Serial.printf("[Otto] Locking BSSID %02X:%02X:%02X:%02X:%02X:%02X ch%d\n",
-        bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5], channel);
-    WiFi.begin(g_ssid, g_pass, channel, bssid);
+// Scan for all APs with our SSID, pick the one with the strongest signal, and
+// connect with the BSSID locked so the ESP32 cannot roam mid-session.
+// Using a BSSID-locked WiFi.begin() means a single association cycle — no
+// second WiFi.begin() is ever needed to "apply" the lock after the fact.
+// Returns true on success, false if SSID not found or association timed out.
+static bool wifi_scan_and_connect() {
+    Serial.println("[Otto] Scanning for best AP...");
+    int n = WiFi.scanNetworks();
+    uint8_t best_bssid[6] = {};
+    int best_channel = 0;
+    int best_rssi = -200;
+    for (int i = 0; i < n; i++) {
+        if (WiFi.SSID(i) == g_ssid && WiFi.RSSI(i) > best_rssi) {
+            best_rssi = WiFi.RSSI(i);
+            best_channel = WiFi.channel(i);
+            memcpy(best_bssid, WiFi.BSSID(i), 6);
+        }
+    }
+    WiFi.scanDelete();
+
+    if (best_rssi == -200) {
+        Serial.printf("[Otto] SSID '%s' not found in scan\n", g_ssid);
+        return false;
+    }
+
+    Serial.printf("[Otto] Best AP: %02X:%02X:%02X:%02X:%02X:%02X ch%d RSSI%d\n",
+        best_bssid[0], best_bssid[1], best_bssid[2],
+        best_bssid[3], best_bssid[4], best_bssid[5],
+        best_channel, best_rssi);
+
+    WiFi.begin(g_ssid, g_pass, best_channel, best_bssid);
     unsigned long t = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t < 10000) delay(100);
+    while (WiFi.status() != WL_CONNECTED && millis() - t < 15000) delay(100);
+
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[Otto] WiFi association timed out");
+        return false;
+    }
+    return true;
 }
 
-// Reconnect to WiFi with free AP selection, then re-lock to whatever AP is chosen.
-// Only called from WAITING_AGENT when WiFi itself has dropped (not a micro-ROS disconnect).
-static void wifi_reconnect_free() {
-    Serial.println("[Otto] WiFi dropped — reconnecting (free AP selection)...");
+// Reconnect after a real WiFi drop — scan so we pick the best AP again,
+// then connect with BSSID locked.  Only called from WAITING_AGENT.
+static void wifi_reconnect() {
+    Serial.println("[Otto] WiFi dropped — reconnecting...");
     led_status_color(255, 200, 0);  // Yellow
-    WiFi.begin(g_ssid, g_pass);
-    unsigned long t = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t < 20000) delay(200);
-    if (WiFi.status() == WL_CONNECTED) {
+    if (wifi_scan_and_connect()) {
         Serial.print("[Otto] WiFi reconnected: ");
         Serial.println(WiFi.localIP());
-        wifi_lock_bssid();
     } else {
         Serial.println("[Otto] WiFi reconnect failed, will retry...");
     }
@@ -183,6 +209,17 @@ void setup() {
     Serial.println("[Otto] Connecting to WiFi...");
     led_status_color(255, 200, 0);  // Yellow
 
+    // WiFi settings applied before first scan/connect so they take effect immediately.
+    WiFi.mode(WIFI_STA);
+    // Reduce TX power: default 20dBm peaks cause large current spikes from battery.
+    // 13dBm is plenty for home use and cuts peak draw by ~75%.
+    WiFi.setTxPower(WIFI_POWER_13dBm);
+    // Disable modem sleep — prevents missed beacons that cause phantom disconnects.
+    WiFi.setSleep(false);
+    // Disable auto-reconnect; we manage reconnection manually in WAITING_AGENT
+    // so we can pick the best AP after a real WiFi drop.
+    WiFi.setAutoReconnect(false);
+
     // Apply static IP BEFORE WiFi.begin() — ESP32 requires this order.
     // WiFi.config() after WiFi.begin() can break the network stack.
 #ifdef STATIC_IP
@@ -197,25 +234,27 @@ void setup() {
     }
 #endif
 
-    // Connect WiFi and register micro-ROS UDP transport
-    IPAddress agent_ip;
-    agent_ip.fromString(AGENT_IP);
-    set_microros_wifi_transports(g_ssid, g_pass, agent_ip, AGENT_PORT);
+    // Scan for the best AP and connect with BSSID locked in one WiFi.begin().
+    // If the scan fails (AP not visible yet) we proceed anyway — the loop will
+    // call wifi_reconnect() and keep retrying.
+    wifi_scan_and_connect();
 
-    // Reduce TX power: default 20dBm peaks cause large current spikes from battery.
-    // 13dBm is plenty for home use and cuts peak draw by ~75%.
-    WiFi.setTxPower(WIFI_POWER_13dBm);
-
-    // Disable modem sleep — prevents missed beacons that cause phantom disconnects.
-    WiFi.setSleep(false);
-
-    // Disable auto-reconnect; we manage reconnection manually in WAITING_AGENT
-    // so we can do a free-AP reconnect (no stale BSSID lock) after a real WiFi drop.
-    WiFi.setAutoReconnect(false);
-
-    // Lock to the connected BSSID — prevents the ESP32 from roaming mid-session
-    // when 802.11k/r/v BSS Transition requests arrive from the access point.
-    wifi_lock_bssid();
+    // Register micro-ROS UDP transport.  This is the same code that
+    // set_microros_wifi_transports() uses internally, but without the WiFi.begin()
+    // inside it — we already did that above with BSSID locking.
+    {
+        IPAddress agent_ip;
+        agent_ip.fromString(AGENT_IP);
+        static struct micro_ros_agent_locator locator;
+        locator.address = agent_ip;
+        locator.port    = AGENT_PORT;
+        rmw_uros_set_custom_transport(
+            false, (void *) &locator,
+            platformio_transport_open,
+            platformio_transport_close,
+            platformio_transport_write,
+            platformio_transport_read);
+    }
 
     Serial.print("[Otto] WiFi IP: ");
     Serial.println(WiFi.localIP());
@@ -233,9 +272,9 @@ void loop() {
 
     switch (state) {
         case WAITING_AGENT:
-            // If WiFi itself dropped, reconnect freely (pick best AP) then re-lock BSSID
+            // If WiFi itself dropped, reconnect by scanning for the best AP
             if (WiFi.status() != WL_CONNECTED) {
-                wifi_reconnect_free();
+                wifi_reconnect();
                 last_state_change = millis();
                 break;
             }
@@ -265,6 +304,7 @@ void loop() {
         case AGENT_AVAILABLE:
             if (create_entities()) {
                 Serial.println("[Otto] micro-ROS entities created, connected!");
+                ping_fail_count = 0;
                 state = AGENT_CONNECTED;
                 last_state_change = millis();
                 digitalWrite(PIN_LED_BUILTIN, HIGH);  // Solid on
@@ -295,14 +335,23 @@ void loop() {
             // Update ring LED status animation
             led_ring_status_update();
 
-            // Periodic agent ping to detect disconnection
+            // Periodic agent ping to detect disconnection.
+            // Runs every 2 s; blocks at most AGENT_PING_TIMEOUT_MS (200ms) — safely
+            // below CMD_VEL_TIMEOUT_MS (500ms).  Requires AGENT_PING_FAIL_MAX
+            // consecutive failures before tearing down entities (~6 s tolerance).
             if (millis() - last_state_change > 2000) {
-                if (rmw_uros_ping_agent(AGENT_PING_TIMEOUT_MS, AGENT_PING_ATTEMPTS) != RMW_RET_OK) {
-                    Serial.println("[Otto] Agent lost, disconnecting...");
-                    state = AGENT_DISCONNECTED;
-                    last_state_change = millis();
-                }
                 last_state_change = millis();
+                if (rmw_uros_ping_agent(AGENT_PING_TIMEOUT_MS, AGENT_PING_ATTEMPTS) == RMW_RET_OK) {
+                    ping_fail_count = 0;
+                } else {
+                    ping_fail_count++;
+                    Serial.printf("[Otto] Agent ping failed (%d/%d)\n", ping_fail_count, AGENT_PING_FAIL_MAX);
+                    if (ping_fail_count >= AGENT_PING_FAIL_MAX) {
+                        Serial.println("[Otto] Agent lost, disconnecting...");
+                        ping_fail_count = 0;
+                        state = AGENT_DISCONNECTED;
+                    }
+                }
             }
             break;
 

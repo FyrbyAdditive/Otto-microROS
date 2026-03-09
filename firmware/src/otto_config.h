@@ -100,7 +100,7 @@
 // Speed scale: maps m/s velocity to servo microsecond offset from center.
 // With max cmd_vel ~0.2 m/s mapping to 500us offset: SPEED_SCALE = 500 / 0.2 = 2500
 // Adjust empirically after testing with your servos.
-#define SERVO_SPEED_SCALE   2500.0
+#define SERVO_SPEED_SCALE   3333.3
 
 // Dead band: minimum microsecond offset from neutral before the servo actually
 // moves. Offsets smaller than this get clamped to zero (neutral) to prevent
@@ -150,11 +150,15 @@
 // ============================================================
 // micro-ROS Agent Ping
 // ============================================================
-// WiFi UDP is lossy: use multiple attempts so a single dropped packet
-// does not trigger a full disconnect/reconnect cycle.
-// Total disconnect detection = TIMEOUT * ATTEMPTS = 600ms.
-#define AGENT_PING_TIMEOUT_MS  500  // ms per attempt — 500ms survives a WiFi roam event
-#define AGENT_PING_ATTEMPTS      3  // attempts before declaring lost (1500ms total tolerance)
+// Agent ping tuning.
+// Each ping check blocks the executor for TIMEOUT * ATTEMPTS ms — keep this
+// well below CMD_VEL_TIMEOUT_MS (500ms) so the safety stop never fires due to
+// a stalled ping.  Resilience against transient packet loss comes from
+// AGENT_PING_FAIL_MAX: the agent must fail that many consecutive checks
+// (spaced ~2 s apart) before entities are torn down (~6 s total tolerance).
+#define AGENT_PING_TIMEOUT_MS  200  // ms per attempt — max executor freeze: 200ms
+#define AGENT_PING_ATTEMPTS      1  // single attempt per check; retry via fail counter
+#define AGENT_PING_FAIL_MAX      3  // consecutive failures before disconnect (~6 s)
 #define AGENT_RECONNECT_MS     500  // Delay between reconnection attempts
 
 #endif // OTTO_CONFIG_H
