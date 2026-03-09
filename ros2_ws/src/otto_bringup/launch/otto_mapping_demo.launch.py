@@ -5,11 +5,13 @@ Usage:
 """
 
 import os
+import lifecycle_msgs.msg
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, EmitEvent, RegisterEventHandler
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import LifecycleNode, Node
+from launch_ros.events.lifecycle import ChangeState
+from launch_ros.event_handlers import OnStateTransition
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -22,13 +24,30 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(bringup_pkg, 'launch', 'otto_microros.launch.py')))
 
-    # slam_toolbox in online async mode
-    slam = Node(
+    # slam_toolbox in online async mode (lifecycle node)
+    slam = LifecycleNode(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
         name='slam_toolbox',
+        namespace='',
         parameters=[os.path.join(bringup_pkg, 'config', 'slam_toolbox.yaml')],
         output='screen')
+
+    # Auto-activate: configure on startup, then activate once configured
+    configure_slam = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node=slam,
+            start_state='configuring',
+            goal_state='inactive',
+            entities=[
+                EmitEvent(event=ChangeState(
+                    lifecycle_node_matcher=lambda node: node == slam,
+                    transition_id=lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE))]))
+
+    emit_configure = EmitEvent(
+        event=ChangeState(
+            lifecycle_node_matcher=lambda node: node == slam,
+            transition_id=lifecycle_msgs.msg.Transition.TRANSITION_CONFIGURE))
 
     # RViz with mapping display
     rviz = Node(
@@ -40,5 +59,7 @@ def generate_launch_description():
     return LaunchDescription([
         bringup,
         slam,
+        configure_slam,
+        emit_configure,
         rviz,
     ])

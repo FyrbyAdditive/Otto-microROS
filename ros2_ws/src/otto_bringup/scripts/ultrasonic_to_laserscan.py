@@ -37,20 +37,24 @@ class UltrasonicToLaserScan(Node):
         scan.header = msg.header
 
         if self.mode == 'passthrough':
-            # Single-beam LaserScan spanning the ultrasonic FOV
+            # Fan the single ultrasonic reading across multiple rays spanning
+            # the sensor's FOV.  An ultrasonic cone detects the nearest object
+            # anywhere in its beam, so filling the cone with identical ranges
+            # is physically accurate and gives slam_toolbox enough rays to work.
             half_fov = msg.field_of_view / 2.0
+            num_rays = 11  # odd so centre ray is at 0°
             scan.angle_min = -half_fov
             scan.angle_max = half_fov
-            scan.angle_increment = msg.field_of_view  # Single ray
+            scan.angle_increment = msg.field_of_view / (num_rays - 1)
             scan.time_increment = 0.0
             scan.scan_time = 0.1  # 10Hz
             scan.range_min = msg.min_range
             scan.range_max = msg.max_range
 
             if math.isinf(msg.range) or msg.range < msg.min_range:
-                scan.ranges = [float('inf')]
+                scan.ranges = [float('inf')] * num_rays
             else:
-                scan.ranges = [msg.range]
+                scan.ranges = [msg.range] * num_rays
 
             scan.intensities = []
 

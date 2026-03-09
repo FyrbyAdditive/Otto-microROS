@@ -49,11 +49,16 @@ def generate_launch_description():
         condition=IfCondition(
             EqualsSubstitution(LaunchConfiguration('agent'), 'docker')))
 
-    # micro-ROS agent — installed via apt (ros-jazzy-micro-ros-agent)
+    # micro-ROS agent — from source (~/microros_agent_ws) or apt
     agent_native = ExecuteProcess(
         cmd=[
-            'ros2', 'run', 'micro_ros_agent', 'micro_ros_agent',
-            'udp4', '--port', LaunchConfiguration('agent_port'), '-v4'],
+            'bash', '-c',
+            'source /opt/ros/jazzy/setup.bash && '
+            '[ -f ~/microros_agent_ws/install/setup.bash ] && '
+            'source ~/microros_agent_ws/install/setup.bash; '
+            'exec ros2 run micro_ros_agent micro_ros_agent '
+            'udp4 --port $0 -v4',
+            LaunchConfiguration('agent_port')],
         output='screen',
         condition=IfCondition(
             EqualsSubstitution(LaunchConfiguration('agent'), 'native')))

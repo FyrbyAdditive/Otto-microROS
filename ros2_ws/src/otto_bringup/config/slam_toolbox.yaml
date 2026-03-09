@@ -7,7 +7,7 @@ slam_toolbox:
     map_frame: map
     base_frame: base_footprint
     scan_topic: /scan
-    use_scan_matching: true
+    use_scan_matching: false   # single ultrasonic beam — not enough data for matching
     mode: mapping
 
     # Thresholds before processing a new scan
