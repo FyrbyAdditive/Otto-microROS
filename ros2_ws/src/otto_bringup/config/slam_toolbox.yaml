@@ -10,14 +10,15 @@ slam_toolbox:
     use_scan_matching: false   # single ultrasonic beam — not enough data for matching
     mode: mapping
 
-    # Thresholds before processing a new scan
-    minimum_travel_distance: 0.1      # meters
-    minimum_travel_heading: 0.2       # radians
+    # Thresholds before processing a new scan — low values so turning in
+    # place still generates map coverage from the narrow ultrasonic cone.
+    minimum_travel_distance: 0.02     # 2 cm — insert scans while inching forward
+    minimum_travel_heading: 0.05      # ~3° — insert scans while turning in place
 
     # Map parameters
     resolution: 0.05                  # meters per cell
     max_laser_range: 4.0              # ultrasonic max range
-    map_update_interval: 2.0          # seconds
+    map_update_interval: 0.5          # seconds — faster visual feedback
 
     # Transform parameters
     transform_publish_period: 0.05    # 20Hz TF updates
