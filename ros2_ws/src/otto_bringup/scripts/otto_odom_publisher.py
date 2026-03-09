@@ -19,7 +19,26 @@ from sensor_msgs.msg import JointState
 from tf2_ros import TransformBroadcaster
 
 WHEEL_RADIUS = 0.0245  # m — matches URDF/firmware
-WHEEL_BASE   = 0.0814  # m — matches URDF/firmware
+WHEEL_BASE   = 0.0814  # m — axle-to-axle from STEP CAD
+
+# Servo model — must match firmware otto_config.h so odom reflects actual motion
+SERVO_SPEED_SCALE = 3623.4  # µs per m/s
+SERVO_MAX_OFFSET  = 500.0   # SERVO_MAX_US - SERVO_STOP_US
+SERVO_DEAD_BAND   = 60.0    # µs — offsets below this are clamped to 0
+
+
+def servo_clamp_velocity(v):
+    """Model the firmware's servo output: dead band + saturation clamp.
+
+    Converts a commanded wheel velocity (m/s) to the actual velocity the
+    servo produces, mirroring drive_controller.cpp's microsecond math.
+    """
+    offset = abs(v) * SERVO_SPEED_SCALE
+    if offset < SERVO_DEAD_BAND:
+        return 0.0
+    if offset > SERVO_MAX_OFFSET:
+        offset = SERVO_MAX_OFFSET
+    return math.copysign(offset / SERVO_SPEED_SCALE, v)
 
 
 def euler_to_quaternion(yaw):
@@ -83,13 +102,23 @@ class OdomPublisher(Node):
             self.linear_x = 0.0
             self.angular_z = 0.0
 
-        # Integrate pose and wheel angles
-        self.theta += self.angular_z * dt
-        self.x += self.linear_x * math.cos(self.theta) * dt
-        self.y += self.linear_x * math.sin(self.theta) * dt
+        # Convert cmd_vel to individual wheel velocities, then clamp through
+        # the same servo model the firmware uses.  This makes odom track what
+        # the servos ACTUALLY produce, not the unclamped command.
+        v_left_cmd  = self.linear_x - self.angular_z * WHEEL_BASE / 2.0
+        v_right_cmd = self.linear_x + self.angular_z * WHEEL_BASE / 2.0
+        v_left  = servo_clamp_velocity(v_left_cmd)
+        v_right = servo_clamp_velocity(v_right_cmd)
 
-        v_left  = self.linear_x - self.angular_z * WHEEL_BASE / 2.0
-        v_right = self.linear_x + self.angular_z * WHEEL_BASE / 2.0
+        # Back-compute effective linear/angular from clamped wheel speeds
+        eff_linear  = (v_right + v_left) / 2.0
+        eff_angular = (v_right - v_left) / WHEEL_BASE
+
+        # Integrate pose and wheel angles using effective (clamped) velocities
+        self.theta += eff_angular * dt
+        self.x += eff_linear * math.cos(self.theta) * dt
+        self.y += eff_linear * math.sin(self.theta) * dt
+
         self.left_wheel_angle  += (v_left  / WHEEL_RADIUS) * dt
         self.right_wheel_angle += (v_right / WHEEL_RADIUS) * dt
 
@@ -115,9 +144,9 @@ class OdomPublisher(Node):
         odom.pose.pose.position.y = self.y
         odom.pose.pose.orientation = q
 
-        # Velocity
-        odom.twist.twist.linear.x = self.linear_x
-        odom.twist.twist.angular.z = self.angular_z
+        # Velocity (effective after servo clamping, not raw cmd_vel)
+        odom.twist.twist.linear.x = eff_linear
+        odom.twist.twist.angular.z = eff_angular
 
         # High covariance — no encoder feedback, dead-reckoning only
         odom.pose.covariance[0] = 0.1   # x

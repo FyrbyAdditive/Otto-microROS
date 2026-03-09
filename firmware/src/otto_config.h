@@ -98,9 +98,9 @@
 #define SERVO_RIGHT_TRIM       0
 
 // Speed scale: maps m/s velocity to servo microsecond offset from center.
-// With max cmd_vel ~0.2 m/s mapping to 500us offset: SPEED_SCALE = 500 / 0.2 = 2500
-// Adjust empirically after testing with your servos.
-#define SERVO_SPEED_SCALE   3333.3
+// Calibrated empirically using scripts/calibrate_kinematics.py.
+// Max unsaturated speed = SERVO_MAX_OFFSET / SERVO_SPEED_SCALE ≈ 0.138 m/s.
+#define SERVO_SPEED_SCALE   3623.4
 
 // Dead band: minimum microsecond offset from neutral before the servo actually
 // moves. Offsets smaller than this get clamped to zero (neutral) to prevent
