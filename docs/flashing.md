@@ -180,3 +180,10 @@ After flashing, the servos and line sensors may need calibration. See [calibrati
 - **Servo stop point** — eliminating wheel creep at rest
 - **Servo speed scale** — matching commanded and actual travel distance
 - **Line sensors** — adjusting the potentiometer threshold and verifying readings
+
+---
+
+<p align="center">
+  <br>
+  <img src="images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>

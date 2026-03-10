@@ -87,3 +87,10 @@ Two TCRT5000-based IR reflectance modules for detecting dark lines on light surf
 - **GPIO 39** reads through a 2:1 voltage divider (2 x 100 kΩ resistors)
 - LiPo single cell: 3.0 V (empty) → 4.2 V (full)
 - Calibrate `BATTERY_DIVIDER_RATIO` in [`otto_config.h`](../firmware/src/otto_config.h) with a multimeter if readings are inaccurate
+
+---
+
+<p align="center">
+  <br>
+  <img src="images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>

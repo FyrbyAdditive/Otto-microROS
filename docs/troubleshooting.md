@@ -51,3 +51,10 @@ Common issues and fixes for the Otto Starter micro-ROS project.
 | No topics visible | Ensure the agent is running and the ESP32 is connected (solid blue LED). Try: `ros2 daemon stop && ros2 daemon start` |
 | RViz shows no robot model | Verify `robot_state_publisher` is running: `ros2 node list`. Check URDF: `ros2 param get /robot_state_publisher robot_description` |
 | RViz shows white/untextured robot (Docker) | The `rviz` service must run alongside `bringup` or `mapping` — it does not start its own robot stack. See [docker.md](docker.md) |
+
+---
+
+<p align="center">
+  <br>
+  <img src="images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>

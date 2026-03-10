@@ -72,3 +72,10 @@ The map builds gradually. Expect it to be rough — this is educational, not pre
 | Map is very noisy | Expected with a single ultrasonic beam and no encoders. Drive slowly and make full 360° rotations at each position |
 | Robot flickers between orientations | Scan matching was re-enabled. Set `use_scan_matching: false` in [`slam_toolbox.yaml`](../ros2_ws/src/otto_bringup/config/slam_toolbox.yaml) |
 | Agent disconnects | Check WiFi signal strength. The ESP32 reconnects automatically. Brief dropouts (< 6 s) are tolerated |
+
+---
+
+<p align="center">
+  <br>
+  <img src="images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>

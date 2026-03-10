@@ -113,3 +113,10 @@ All services use `network_mode: host` so they share the host's network stack. Th
 A custom [FastDDS profile](../docker/fastdds.xml) disables shared-memory transport and forces UDP, which is necessary for DDS communication between separate containers.
 
 The [Dockerfile](../docker/Dockerfile) builds the Micro XRCE-DDS Agent from source (the same agent the firmware talks to) and the Otto ROS2 workspace. The firmware is **not** included — you flash it via PlatformIO on the host machine.
+
+---
+
+<p align="center">
+  <br>
+  <img src="images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>

@@ -100,3 +100,10 @@ Formula (mm → m):
 ```
 
 AXLE_Y and AXLE_Z are computed automatically from the Wheels group by the export script.
+
+---
+
+<p align="center">
+  <br>
+  <img src="images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>

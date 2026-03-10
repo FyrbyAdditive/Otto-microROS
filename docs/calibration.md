@@ -116,3 +116,10 @@ Using a small Phillips screwdriver on the underside of each sensor board:
 5. Repeat for the other sensor
 
 > **Tip:** The potentiometer is sensitive — small turns make a big difference. If you overshoot, go back the other way slowly.
+
+---
+
+<p align="center">
+  <br>
+  <img src="images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>

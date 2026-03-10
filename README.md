@@ -291,3 +291,10 @@ See [docs/troubleshooting.md](docs/troubleshooting.md).
 ## License
 
 MIT
+
+---
+
+<p align="center">
+  <br>
+  <img src="docs/images/fame-logo.letterbox.png" alt="FAME logo" width="200">
+</p>
