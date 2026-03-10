@@ -61,7 +61,7 @@ Control your HP Robots Otto Starter Kit with ROS2! This cute little educational 
 **Hardware**
 - HP Robots Otto Starter Kit (wheeled variant)
 - USB-C data cable (for flashing firmware)
-- 2.4GHz WiFi network
+- 2.4 GHz WiFi network
 
 **Computer**
 - Ubuntu 24.04 with [ROS2 Jazzy](https://docs.ros.org/en/jazzy/Installation.html) installed
@@ -94,7 +94,7 @@ cp firmware/src/wifi_credentials.h.example firmware/src/wifi_credentials.h
 Open `firmware/src/wifi_credentials.h` and edit these four lines:
 
 ```cpp
-#define WIFI_SSID      "YourWiFiName"       // 2.4GHz networks only
+#define WIFI_SSID      "YourWiFiName"       // 2.4 GHz networks only
 #define WIFI_PASSWORD  "YourWiFiPassword"
 #define AGENT_IP       "192.168.1.100"       // Your computer's IP address
 #define AGENT_PORT     8888
@@ -172,7 +172,7 @@ Shows the 3D robot model, sensor frames, and ultrasonic range cone.
 
 ## Mapping demo
 
-Drive the robot around to build a map of the room:
+With the robot stack already running (`./start.sh`), launch the mapping demo in a new terminal:
 
 ```bash
 ros2 launch otto_bringup otto_mapping_demo.launch.py
@@ -188,7 +188,7 @@ See [docs/mapping_demo.md](docs/mapping_demo.md) for a step-by-step walkthrough.
 |-------|------|-----------|------|-------------|
 | `/cmd_vel` | geometry_msgs/Twist | Subscribe | — | Drive commands |
 | `/ultrasonic/range` | sensor_msgs/Range | Publish | 10Hz | Distance, 0.02–4m |
-| `/line_sensors` | std_msgs/Int32MultiArray | Publish | 20Hz | IR sensor ADC values |
+| `/line_sensors` | std_msgs/Int32MultiArray | Publish | 20Hz | IR line sensor ADC values |
 | `/battery_state` | sensor_msgs/BatteryState | Publish | 1Hz | Voltage and percentage |
 | `/leds` | std_msgs/UInt8MultiArray | Subscribe | — | LED colour commands |
 | `/buzzer` | std_msgs/UInt16 | Subscribe | — | Tone frequency (0=off) |
@@ -226,7 +226,7 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 │       ├── led_controller.*    # NeoPixel LEDs
 │       ├── led_ring_status.*   # Eye ring idle/direction animation
 │       ├── ultrasonic_sensor.* # Range publisher
-│       ├── line_sensor.*       # IR sensor publisher
+│       ├── line_sensor.*       # IR line sensor publisher
 │       ├── battery_monitor.*   # Battery publisher
 │       └── buzzer.*            # Tone subscriber
 ├── ros2_ws/
@@ -235,7 +235,10 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 │       └── otto_bringup/       # Launch files, odom, scan converter
 ├── docker/                     # Docker setup (alternative to native install)
 │   ├── Dockerfile
-│   └── docker-compose.yml
+│   ├── docker-compose.yml
+│   ├── entrypoint.sh
+│   └── fastdds.xml
+├── hardware/                   # CAD source (STEP file)
 ├── scripts/                    # Utility scripts
 │   ├── calibrate_kinematics.py # Servo speed calibration
 │   └── export_meshes.py        # STEP → STL mesh export
@@ -261,7 +264,7 @@ build_flags =
     -DSERVO_TYPE_SERIAL_BUS=1
 ```
 
-This uses GPIO 18/19 for the servo UART instead of the ultrasonic sensor. See [docs/wiring.md](docs/wiring.md) for details.
+This uses GPIO 16/17 (Connector 2) for the servo UART. The ultrasonic sensor remains available. See [docs/wiring.md](docs/wiring.md) for details.
 
 ---
 
@@ -270,7 +273,7 @@ This uses GPIO 18/19 for the servo UART instead of the ultrasonic sensor. See [d
 - **MCU**: ESP32-WROOM-32E-N8 (8MB flash)
 - **Servos**: 2× continuous rotation PWM (GPIO 14 left, GPIO 13 right)
 - **Ultrasonic**: RCWL-9610 on GPIO 18/19
-- **IR sensors**: Analog on GPIO 32/33
+- **Line sensors**: 2× IR reflectance (GPIO 32 left, GPIO 33 right) — detect dark lines on light surfaces
 - **LEDs**: 13× WS2812B eye ring (GPIO 4), 6× on ultrasonic housing (GPIO 18)
 - **Buzzer**: GPIO 25 (passive, PWM)
 - **Battery**: 3.7V 1800mAh LiPo, ADC on GPIO 39
