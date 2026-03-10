@@ -14,7 +14,7 @@ Control your HP Robots Otto Starter Kit with ROS2! This cute little educational 
 - **Dead-reckoning odometry** — track position from cmd_vel with servo clamping model
 - **LED ring animations** — idle status, direction-of-travel, and proximity warnings
 - **Buzzer and sensors** — battery voltage, IR line sensors, ultrasonic range
-- **Calibration tools** — servo speed calibration script with live feedback
+- **Calibration tools** — servo speed and line sensor calibration with live feedback
 - **Docker support** — run the ROS2 stack in containers without a native install
 
 ## Architecture
@@ -51,6 +51,7 @@ Control your HP Robots Otto Starter Kit with ROS2! This cute little educational 
 | [docs/wiring.md](docs/wiring.md) | GPIO pin reference and connector map |
 | [docs/mapping_demo.md](docs/mapping_demo.md) | SLAM mapping walkthrough |
 | [docs/hardware.md](docs/hardware.md) | CAD source files and mesh export |
+| [docs/calibration.md](docs/calibration.md) | Servo and line sensor calibration |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and fixes |
 | [docs/docker.md](docs/docker.md) | Running the stack with Docker |
 
@@ -249,6 +250,7 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
     ├── wiring.md               # GPIO pin reference
     ├── hardware.md             # CAD source files and mesh export
     ├── mapping_demo.md         # SLAM walkthrough
+    ├── calibration.md          # Servo and line sensor calibration
     ├── docker.md               # Docker usage guide
     └── troubleshooting.md      # Common issues
 ```

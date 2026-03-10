@@ -173,39 +173,10 @@ pio run -t upload && pio device monitor
 
 ---
 
-## Servo Calibration
+## Calibration
 
-After flashing, the servos may need calibration. The key constants are in [`firmware/src/otto_config.h`](../firmware/src/otto_config.h):
+After flashing, the servos and line sensors may need calibration. See [calibration.md](calibration.md) for step-by-step instructions covering:
 
-```cpp
-#define SERVO_STOP_US       1500     // Adjust ±10 if servos creep at rest
-#define SERVO_SPEED_SCALE   3623.4   // Calibrated: µs per m/s (max ~0.14 m/s unsaturated)
-```
-
-### Finding the true stop point
-
-1. Power on with no agent running (servos should be stopped)
-2. If a wheel creeps, adjust `SERVO_STOP_US` up or down by 5–10 µs
-3. Rebuild and re-flash
-
-### Calibrating speed (SERVO_SPEED_SCALE)
-
-Use the calibration script for accurate results:
-
-```bash
-# Terminal 1: start the robot stack
-./start.sh
-
-# Terminal 2: start teleop
-ros2 launch otto_bringup otto_teleop.launch.py
-
-# Terminal 3: run calibration
-python3 scripts/calibrate_kinematics.py
-```
-
-The script guides you through a straight-line test: drive forward, measure the actual distance, and it computes the corrected `SERVO_SPEED_SCALE`. Update the value in both:
-
-- [`firmware/src/otto_config.h`](../firmware/src/otto_config.h)
-- [`ros2_ws/src/otto_bringup/scripts/otto_odom_publisher.py`](../ros2_ws/src/otto_bringup/scripts/otto_odom_publisher.py)
-
-> **Note:** The default teleop speed (0.2 m/s) saturates the servos at the current scale. For valid calibration, use a slower speed — the robot's max unsaturated speed is ~0.14 m/s.
+- **Servo stop point** — eliminating wheel creep at rest
+- **Servo speed scale** — matching commanded and actual travel distance
+- **Line sensors** — adjusting the potentiometer threshold and verifying readings

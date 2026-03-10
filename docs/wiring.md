@@ -71,6 +71,17 @@ When `SERVO_TYPE_SERIAL_BUS=1` in `platformio.ini`, the servos communicate over 
 
 ---
 
+## Line Sensors (Connectors 6 & 7)
+
+Two TCRT5000-based IR reflectance modules for detecting dark lines on light surfaces. Each has an onboard potentiometer — see [calibration.md](calibration.md) for setup instructions.
+
+| Sensor | Connector | GPIO | ADC |
+|--------|:---------:|:----:|-----|
+| Left | 6 | 32 | 12-bit (0–4095), 20 Hz on `/line_sensors` |
+| Right | 7 | 33 | 12-bit (0–4095), 20 Hz on `/line_sensors` |
+
+---
+
 ## Battery Monitoring
 
 - **GPIO 39** reads through a 2:1 voltage divider (2 x 100 kΩ resistors)
