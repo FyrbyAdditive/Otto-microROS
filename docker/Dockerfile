@@ -47,7 +47,10 @@ RUN . /opt/ros/jazzy/setup.sh && \
     colcon build --symlink-install \
         --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
 
-# ── 4. Entrypoint ───────────────────────────────────────────────────────────
+# ── 4. FastDDS config (disable shared memory for cross-container comms) ────
+COPY docker/fastdds.xml /opt/otto/fastdds.xml
+
+# ── 5. Entrypoint ───────────────────────────────────────────────────────────
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

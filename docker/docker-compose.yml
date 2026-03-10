@@ -29,6 +29,8 @@ services:
     command: >
       ros2 launch otto_bringup otto_microros.launch.py agent:=none
     network_mode: host
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/opt/otto/fastdds.xml
     depends_on:
       - agent
 
@@ -40,6 +42,8 @@ services:
     command: >
       ros2 launch otto_bringup otto_mapping_demo.launch.py agent:=none
     network_mode: host
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/opt/otto/fastdds.xml
     depends_on:
       - agent
 
@@ -52,6 +56,8 @@ services:
       ros2 run teleop_twist_keyboard teleop_twist_keyboard
         --ros-args -p speed:=0.2 -p turn:=5.0
     network_mode: host
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/opt/otto/fastdds.xml
     stdin_open: true
     tty: true
 
@@ -61,11 +67,12 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     command: >
-      ros2 launch otto_description display.launch.py
+      rviz2 -d /opt/otto/ros2_ws/install/otto_description/share/otto_description/rviz/otto.rviz
     network_mode: host
     environment:
       - DISPLAY=${DISPLAY}
       - QT_X11_NO_MITSHM=1
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/opt/otto/fastdds.xml
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     # Uncomment for NVIDIA GPU support:

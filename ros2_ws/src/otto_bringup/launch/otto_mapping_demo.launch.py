@@ -19,10 +19,11 @@ def generate_launch_description():
     bringup_pkg = get_package_share_directory('otto_bringup')
     desc_pkg = get_package_share_directory('otto_description')
 
-    # Include the main bringup launch
+    # Include the main bringup launch (agent:=none — agent is managed separately)
     bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(bringup_pkg, 'launch', 'otto_microros.launch.py')))
+            os.path.join(bringup_pkg, 'launch', 'otto_microros.launch.py')),
+        launch_arguments={'agent': 'none'}.items())
 
     # slam_toolbox in online async mode (lifecycle node)
     slam = LifecycleNode(

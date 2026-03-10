@@ -1,55 +1,78 @@
-# Wiring Reference — HP Robots Otto Starter Kit
+# Wiring Reference
+
+Pin assignments and peripheral wiring for the HP Robots Otto Starter Kit PCB. Ignore the Serial Bus Servo section if you are using the original kit.
+
+---
 
 ## Connector Pin Map
 
-The HP Robots Otto PCB has 11 numbered JST connectors. Each exposes signal GPIO(s) plus VCC and GND.
+The PCB has 11 numbered JST connectors. Each exposes one or two signal GPIOs plus VCC and GND.
 
-| Connector | GPIO | Type | Default Use (Starter Kit) | Alt Uses |
-|-----------|------|------|---------------------------|----------|
-| 1 | 18, 19 | Digital | Ultrasonic sensor (RCWL-9610) | OLED display, serial bus servo UART |
-| 2 | 16, 17 | Digital | *Unused* | MP3 player, encoder |
+| Connector | GPIO | Type | Default Use (Starter Kit) | Alternatives |
+|:---------:|:----:|:----:|---------------------------|--------------|
+| 1 | 18, 19 | Digital | Ultrasonic sensor (RCWL-9610) | OLED display |
+| 2 | 16, 17 | UART | *Unused* | Serial bus servos, MP3 player |
 | 3 | 22, 21 | I2C | *Unused* | Matrix display, accelerometer |
 | 4 | 26 | Digital | *Unused* | Tilt sensor, button |
-| 5 | 4 | Digital | LED ring (13x WS2812B) | Temperature sensor |
+| 5 | 4 | Digital | LED ring (13 x WS2812B) | Temperature sensor |
 | 6 | 32 | ADC | Left IR line sensor | Microphone |
 | 7 | 33 | ADC | Right IR line sensor | Potentiometer, light sensor |
-| 8 | 27 | PWM | *Unused* (biped: right hip servo) | |
-| 9 | 15 | PWM | *Unused* (biped: left hip servo) | |
-| 10 | 14 | PWM | Left wheel servo | |
-| 11 | 13 | PWM | Right wheel servo | |
+| 8 | 27 | PWM | *Unused* (biped: right hip) | — |
+| 9 | 15 | PWM | *Unused* (biped: left hip) | — |
+| 10 | 14 | PWM | Left wheel servo | — |
+| 11 | 13 | PWM | Right wheel servo | — |
 
 ## On-Board Peripherals (No Connector)
 
 | Function | GPIO | Notes |
-|----------|------|-------|
-| Built-in LED | 2 | Blue status LED |
+|----------|:----:|-------|
+| Status LED | 2 | Blue, active-high |
 | Buzzer | 25 | Passive electromagnetic, PWM driven |
-| Battery voltage | 39 | ADC input-only, through voltage divider (2x 100k) |
+| Battery voltage | 39 | ADC input-only, through voltage divider (2 x 100 kΩ) |
+
+---
 
 ## Ultrasonic Sensor (Connector 1)
 
 The RCWL-9610 is wired to Connector 1:
-- **GPIO 19**: Trigger/Echo (single-wire mode)
-- **GPIO 18**: NeoPixel data for 6 WS2812B LEDs on the sensor PCB
 
-In single-wire mode, GPIO 19 is toggled between output (trigger pulse) and input (echo measurement) for each reading.
+| Pin | GPIO | Function |
+|-----|:----:|----------|
+| Signal A | 18 | NeoPixel data — 6 x WS2812B LEDs on the sensor PCB |
+| Signal B | 19 | Trigger / Echo (single-wire mode) |
 
-## Servo Wiring (Starter Kit)
+In single-wire mode, GPIO 19 toggles between output (10 µs trigger pulse) and input (echo timing) for each reading.
 
-- **Left wheel**: Connector 10 → GPIO 14 (continuous rotation, 50Hz PWM)
-- **Right wheel**: Connector 11 → GPIO 13 (continuous rotation, 50Hz PWM, mirror-mounted)
-- PWM range: 1000-2000µs (1500µs = stop)
+---
 
-## Serial Bus Servo Mode
+## Servo Wiring (Starter Kit — PWM)
 
-When `SERVO_TYPE_SERIAL_BUS=1`, GPIO 18/19 are repurposed:
-- **GPIO 18**: UART RX (servo bus)
-- **GPIO 19**: UART TX (servo bus)
-- Baud rate: 1,000,000
-- The ultrasonic sensor cannot be used in this configuration.
+Default mode (`SERVO_TYPE_SERIAL_BUS=0`):
+
+| Wheel | Connector | GPIO | Signal |
+|-------|:---------:|:----:|--------|
+| Left | 10 | 14 | 50 Hz PWM, 1000–2000 µs (1500 µs = stop) |
+| Right | 11 | 13 | 50 Hz PWM, 1000–2000 µs (mirror-mounted) |
+
+---
+
+## Serial Bus Servo Mode (Connector 2)
+
+When `SERVO_TYPE_SERIAL_BUS=1` in `platformio.ini`, the servos communicate over a half-duplex UART bus on **Connector 2**:
+
+| Pin | GPIO | Function |
+|-----|:----:|----------|
+| Signal A | 16 | UART2 RX |
+| Signal B | 17 | UART2 TX |
+
+- **Baud rate**: 1 000 000
+- **Protocol**: Feetech SCServo (STS/SCS series)
+- The ultrasonic sensor on Connector 1 remains available — the two modes are independent.
+
+---
 
 ## Battery Monitoring
 
-- GPIO 39 reads through a voltage divider (assumed 2:1 ratio with 2x 100kΩ resistors)
-- LiPo cell: 3.0V (empty) to 4.2V (full)
-- Calibrate `BATTERY_DIVIDER_RATIO` in `otto_config.h` with a multimeter
+- **GPIO 39** reads through a 2:1 voltage divider (2 x 100 kΩ resistors)
+- LiPo single cell: 3.0 V (empty) → 4.2 V (full)
+- Calibrate `BATTERY_DIVIDER_RATIO` in [`otto_config.h`](../firmware/src/otto_config.h) with a multimeter if readings are inaccurate

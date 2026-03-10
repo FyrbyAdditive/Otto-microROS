@@ -94,7 +94,7 @@ class OttoVisualizer(Node):
                                  self._line_cb, best_effort)
 
         # Publish at 10 Hz even without new data so RViz markers don't time out
-        self.create_timer(0.1, self._publish)
+        self.create_timer(0.02, self._publish)
 
     # -- Callbacks --------------------------------------------------------
 
