@@ -1,14 +1,16 @@
 # Hardware — CAD Source Files
 
+Design source and mesh export workflow for the Otto Starter Kit.
+
+---
+
 ## STEP File
 
-The robot design source is `hardware/ZGX Otto.step` (Shapr3D export, 2026-03-02).
-
-This file is **not committed to git** (large binary). If you need it, obtain it from the project maintainer or Shapr3D workspace.
+The robot design source is [`hardware/ZGX Otto.step`](../hardware/ZGX%20Otto.step) (Shapr3D export, 2026-03-02).
 
 ## Re-exporting Meshes
 
-The STL meshes in `ros2_ws/src/otto_description/meshes/` are generated from the STEP file. To regenerate them after a design update:
+The STL meshes in [`ros2_ws/src/otto_description/meshes/`](../ros2_ws/src/otto_description/meshes/) are generated from the STEP file. To regenerate after a design update:
 
 ```bash
 # Install CadQuery (one-time, using conda)
@@ -19,20 +21,66 @@ conda run -n cadquery pip install "ezdxf==0.18.1"
 conda run -n cadquery python3 scripts/export_meshes.py
 ```
 
-The script prints the URDF origin for any new parts (e.g. `battery_cover`) so you can update `otto_starter.urdf.xacro` if positions change.
+The script prints URDF origins for any new parts so you can update `otto_starter.urdf.xacro` if positions change.
+
+---
 
 ## Part Breakdown
 
-| STEP part(s) | Output mesh | Notes |
-|---|---|---|
-| Top + Middle + Bottom + Logo | `body.stl` | Logo is a surface feature on Middle |
-| Face plate + Lines Upper/Lower | `face.stl` | Ultrasonic sensor mount |
-| Wheels (left side) | `wheel_left.stl` | 3 concentric disc rings |
-| Wheels (right side) | `wheel_right.stl` | 3 concentric disc rings |
-| Ballcaster + housing | `caster.stl` | Front ball caster |
-| Battery Cover | `battery_cover.stl` | Rear panel |
+The export script groups named STEP parts into individual meshes:
 
-Skipped (not exported): PCB module, ultrasonic transducer pins (decorative only).
+### Body
+
+| STEP group | Output mesh | Colour |
+|------------|-------------|--------|
+| Middle (main cylinder) | `body_shell.stl` | Dark grey |
+| Middle (clips) | `body_clips.stl` | Dark grey |
+| Top (main) | `body_top.stl` | White |
+| Top (logo lines) | `body_top_lines.stl` | Black |
+| Top (honeycomb pattern) | `body_top_pattern.stl` | Dark grey |
+| Unnamed (square plate) | `body_bottom.stl` | Black |
+| Unnamed (face plate) | `body_face.stl` | Dark grey |
+
+### Wheels
+
+| STEP group | Output mesh | Colour |
+|------------|-------------|--------|
+| Wheels (left, large) | `wheel_left_tire.stl` | Black rubber |
+| Wheels (left, small) | `wheel_left_rim.stl` | Dark grey |
+| Wheels (left, hub) | `wheel_left_hub.stl` | White |
+| Wheels (right, large) | `wheel_right_tire.stl` | Black rubber |
+| Wheels (right, small) | `wheel_right_rim.stl` | Dark grey |
+| Wheels (right, hub) | `wheel_right_hub.stl` | White |
+
+### Caster
+
+| STEP group | Output mesh | Colour |
+|------------|-------------|--------|
+| Ballcaster (housing) | `caster.stl` | Dark grey |
+| Ballcaster (bracket) | `caster_bracket.stl` | Dark grey |
+| Ballcaster (ball) | `caster_ball.stl` | Silver |
+
+### Sensors and LEDs
+
+| STEP group | Output mesh | Colour |
+|------------|-------------|--------|
+| LED Ring (PCB) | `led_ring.stl` | Blue |
+| LED Ring (pads) | `led_pads.stl` | White |
+| Ultrasonic (full) | `ultrasonic.stl` | Mixed |
+| Ultrasonic (board) | `ultrasonic_board.stl` | Blue |
+| Ultrasonic (plug) | `ultrasonic_plug.stl` | White |
+| Ultrasonic (cans) | `ultrasonic_cans.stl` | Silver |
+| Ultrasonic (pins) | `ultrasonic_metal.stl` | Silver |
+| Line Sensor Left (full) | `line_sensor_left.stl` | PCB green |
+| Line Sensor Left (board) | `line_sensor_left_board.stl` | PCB green |
+| Line Sensor Left (white) | `line_sensor_left_white.stl` | White |
+| Line Sensor Left (black) | `line_sensor_left_black.stl` | Black |
+| Line Sensor Right (full) | `line_sensor_right.stl` | PCB green |
+| Line Sensor Right (board) | `line_sensor_right_board.stl` | PCB green |
+| Line Sensor Right (white) | `line_sensor_right_white.stl` | White |
+| Line Sensor Right (black) | `line_sensor_right_black.stl` | Black |
+
+---
 
 ## STEP Coordinate System
 
@@ -40,12 +88,15 @@ For reference when updating URDF origins after re-export:
 
 ```
 STEP axes → ROS axes (base_link at axle height):
-  STEP −Y = ROS +X  (forward)
-  STEP −X = ROS +Y  (left)
-  STEP  Z → ROS +Z  (up, offset: STEP axle Z = −10 mm)
 
-Formula:
-  ros_x = −step_cy × 0.001
-  ros_y = −step_cx × 0.001
-  ros_z = (step_cz − (−10)) × 0.001
+  STEP −Y  →  ROS +X  (forward)
+  STEP +X  →  ROS +Y  (left)
+  STEP +Z  →  ROS +Z  (up, offset so axle = 0)
+
+Formula (mm → m):
+  ros_x = -(step_y - AXLE_Y) × 0.001
+  ros_y = +(step_x)          × 0.001
+  ros_z = +(step_z - AXLE_Z) × 0.001
 ```
+
+AXLE_Y and AXLE_Z are computed automatically from the Wheels group by the export script.
