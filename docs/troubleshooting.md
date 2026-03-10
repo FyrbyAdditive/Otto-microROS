@@ -16,7 +16,10 @@
 **Frequent disconnections**
 - Move the robot closer to the WiFi access point
 - Check for 2.4GHz interference (microwaves, other devices)
-- The firmware auto-reconnects; the blue LED blinks during reconnection
+- The firmware locks to the strongest AP at boot (BSSID lock) to prevent roaming — if you move the robot far from that AP, power-cycle it to re-scan
+- Brief WiFi blips (< 6 seconds) are tolerated without disconnecting (consecutive ping failure counter)
+- The firmware auto-reconnects on real disconnects; the blue LED blinks during reconnection
+- Serial monitor shows `[Otto] Agent ping failed (N/3)` for transient losses — this is normal
 
 ## Firmware Build Issues
 
@@ -40,9 +43,10 @@
 - The cmd_vel timeout stops servos after 500ms of no messages
 
 **Servos spin at wrong speed or direction**
-- Adjust `SERVO_SPEED_SCALE` in `otto_config.h` (increase for faster response)
+- Run `python3 scripts/calibrate_kinematics.py` for accurate calibration (default: 3623.4)
 - If one wheel goes the wrong direction, the mirror inversion may need flipping
 - Continuous rotation servos have no feedback — speed mapping is approximate
+- At the default scale, max unsaturated speed is ~0.14 m/s
 
 **Servos jitter at stop**
 - Normal for cheap continuous rotation servos near the 1500µs neutral point

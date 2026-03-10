@@ -1,6 +1,58 @@
 # HP Robots Otto — micro-ROS Project
 
-Control your HP Robots Otto Starter Kit with ROS2! This cute little educationmal robot runs micro-ROS firmware on its ESP32 and connects wirelessly to your computer so you can drive it with keyboard controls, visualise its sensors in 3D, and even build maps of the room!
+![ROS2 Jazzy](https://img.shields.io/badge/ROS2-Jazzy-blue)
+![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32-orange)
+![License: MIT](https://img.shields.io/badge/License-MIT-green)
+
+Control your HP Robots Otto Starter Kit with ROS2! This cute little educational robot runs micro-ROS firmware on its ESP32 and connects wirelessly to your computer so you can drive it with keyboard controls, visualise its sensors in 3D, and even build maps of the room.
+
+## Features
+
+- **Wireless control** — drive the robot from your keyboard over WiFi
+- **3D visualisation** — see the robot, sensors, and LED ring live in RViz
+- **Ultrasonic mapping** — build occupancy grid maps with slam_toolbox
+- **Dead-reckoning odometry** — track position from cmd_vel with servo clamping model
+- **LED ring animations** — idle status, direction-of-travel, and proximity warnings
+- **Buzzer and sensors** — battery voltage, IR line sensors, ultrasonic range
+- **Calibration tools** — servo speed calibration script with live feedback
+- **Docker support** — run the ROS2 stack in containers without a native install
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Your Computer                                                  │
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────────────────────────────┐   │
+│  │ micro-ROS    │    │  ROS2 Stack                          │   │
+│  │ Agent        │◄──►│  robot_state_publisher (URDF → TF)   │   │
+│  │ (UDP bridge) │    │  otto_odom_publisher (dead reckoning)│   │
+│  └──────┬───────┘    │  ultrasonic_to_laserscan             │   │
+│         │ UDP:8888   │  otto_visualizer (RViz markers)      │   │
+│         │            │  slam_toolbox (mapping, optional)    │   │
+│         │            └──────────────────────────────────────┘   │
+│         │                                                       │
+└─────────┼───────────────────────────────────────────────────────┘
+          │ WiFi
+┌─────────┴───────────────────────────────────────────────────────┐
+│  Otto Robot (ESP32)                                             │
+│  micro-ROS node "otto_starter"                                  │
+│                                                                 │
+│  Publishers: /ultrasonic/range, /line_sensors, /battery_state   │
+│  Subscribers: /cmd_vel, /leds, /buzzer                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Quick Links
+
+| Document | Description |
+|----------|-------------|
+| [docs/flashing.md](docs/flashing.md) | Detailed firmware flashing guide |
+| [docs/wiring.md](docs/wiring.md) | GPIO pin reference and connector map |
+| [docs/mapping_demo.md](docs/mapping_demo.md) | SLAM mapping walkthrough |
+| [docs/hardware.md](docs/hardware.md) | CAD source files and mesh export |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and fixes |
+| [docs/docker.md](docs/docker.md) | Running the stack with Docker |
 
 ---
 
@@ -14,6 +66,8 @@ Control your HP Robots Otto Starter Kit with ROS2! This cute little educationmal
 **Computer**
 - Ubuntu 24.04 with [ROS2 Jazzy](https://docs.ros.org/en/jazzy/Installation.html) installed
 - [VS Code](https://code.visualstudio.com/) with the [PlatformIO extension](https://platformio.org/install/ide?install=vscode)
+
+> **Alternatively**, you can run the ROS2 stack in Docker — see [docs/docker.md](docs/docker.md). You still need PlatformIO to flash the firmware.
 
 ---
 
@@ -163,8 +217,6 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 ## Project structure
 
 ```
-├── hardware/                   # CAD source files (not in git — see docs/hardware.md)
-│   └── ZGX Otto.step           # Shapr3D robot design (STEP format)
 ├── firmware/                   # ESP32 micro-ROS firmware (PlatformIO)
 │   ├── platformio.ini
 │   └── src/
@@ -181,13 +233,20 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 │   └── src/
 │       ├── otto_description/   # URDF, meshes, RViz config
 │       └── otto_bringup/       # Launch files, odom, scan converter
+├── docker/                     # Docker setup (alternative to native install)
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── scripts/                    # Utility scripts
+│   ├── calibrate_kinematics.py # Servo speed calibration
+│   └── export_meshes.py        # STEP → STL mesh export
 ├── setup.sh                    # One-time dependency installer
 ├── start.sh                    # Start agent + robot stack
-└── docs/
+└── docs/                       # Documentation
     ├── flashing.md             # Detailed flashing guide
     ├── wiring.md               # GPIO pin reference
     ├── hardware.md             # CAD source files and mesh export
     ├── mapping_demo.md         # SLAM walkthrough
+    ├── docker.md               # Docker usage guide
     └── troubleshooting.md      # Common issues
 ```
 

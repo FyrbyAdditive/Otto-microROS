@@ -146,11 +146,11 @@ pio run -t upload && pio device monitor
 
 ## Servo Calibration
 
-After flashing, the servos may need calibration. In `firmware/src/otto_config.h`:
+After flashing, the servos may need calibration. The key constants are in `firmware/src/otto_config.h`:
 
 ```cpp
-#define SERVO_STOP_US       1500   // Adjust ±10 if servos creep at rest
-#define SERVO_SPEED_SCALE   2500.0 // Increase for faster response to cmd_vel
+#define SERVO_STOP_US       1500     // Adjust ±10 if servos creep at rest
+#define SERVO_SPEED_SCALE   3623.4   // Calibrated: µs per m/s (max ~0.14 m/s unsaturated)
 ```
 
 **To find the true stop point:**
@@ -158,8 +158,21 @@ After flashing, the servos may need calibration. In `firmware/src/otto_config.h`
 2. If a wheel creeps, adjust `SERVO_STOP_US` up or down by 5-10µs
 3. Rebuild and re-flash
 
-**To tune speed mapping:**
-1. Connect to the agent
-2. Send a known velocity: `ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.1}}"`
-3. Measure actual speed (e.g., time how long to travel 1 meter)
-4. Adjust `SERVO_SPEED_SCALE` accordingly
+**To calibrate speed (SERVO_SPEED_SCALE):**
+
+Use the calibration script for accurate results:
+
+```bash
+# Terminal 1: start the robot stack
+./start.sh
+
+# Terminal 2: start teleop
+ros2 launch otto_bringup otto_teleop.launch.py
+
+# Terminal 3: run calibration
+python3 scripts/calibrate_kinematics.py
+```
+
+The script guides you through a straight-line test: drive forward, measure the actual distance, and it computes the corrected `SERVO_SPEED_SCALE`. Update the value in both `firmware/src/otto_config.h` and `ros2_ws/src/otto_bringup/scripts/otto_odom_publisher.py`.
+
+> **Note:** The default teleop speed (0.2 m/s) saturates the servos at the current scale. For valid calibration, the servos must not be saturating — use a slower speed or accept that the robot's max unsaturated speed is ~0.14 m/s.

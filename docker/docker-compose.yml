@@ -1,0 +1,76 @@
+# docker-compose.yml — HP Robots Otto ROS2 stack
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yml build
+#   docker compose -f docker/docker-compose.yml up agent bringup
+#
+# For teleop (in a separate terminal):
+#   docker compose -f docker/docker-compose.yml run teleop
+#
+# For mapping with RViz:
+#   xhost +local:docker
+#   docker compose -f docker/docker-compose.yml up agent mapping rviz
+
+services:
+  # ── micro-ROS agent (WiFi bridge to the robot) ──────────────────────────
+  agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: MicroXRCEAgent udp4 -p 8888
+    network_mode: host
+    restart: unless-stopped
+
+  # ── Robot bringup (URDF, odometry, scan converter, visualizer) ─────────
+  bringup:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      ros2 launch otto_bringup otto_microros.launch.py agent:=none
+    network_mode: host
+    depends_on:
+      - agent
+
+  # ── Mapping (adds slam_toolbox to bringup) ─────────────────────────────
+  mapping:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      ros2 launch otto_bringup otto_mapping_demo.launch.py agent:=none
+    network_mode: host
+    depends_on:
+      - agent
+
+  # ── Teleop (keyboard control — run with: docker compose run teleop) ────
+  teleop:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      ros2 run teleop_twist_keyboard teleop_twist_keyboard
+        --ros-args -p speed:=0.2 -p turn:=5.0
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  # ── RViz (3D visualisation — requires X11 forwarding) ──────────────────
+  rviz:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      ros2 launch otto_description display.launch.py
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    # Uncomment for NVIDIA GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: [gpu]
