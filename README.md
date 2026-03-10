@@ -290,7 +290,7 @@ See [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## License
 
-MIT
+[MIT](LICENSE.md) — Copyright (c) 2026 Timothy Ellis, Fyrby Additive Manufacturing & Engineering
 
 ---
 
