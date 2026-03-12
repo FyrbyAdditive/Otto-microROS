@@ -5,8 +5,8 @@
 .vscode/launch.json
 .vscode/ipch
 
-# WiFi credentials (user-specific, never commit)
-firmware/src/wifi_credentials.h
+# Auto-generated portal HTML header (rebuilt from portal_page.html)
+firmware/src/portal_html.h
 
 # Build artifacts
 *.o

@@ -4,8 +4,8 @@
 // Single node "otto_starter" with publishers for sensors and
 // subscribers for actuators, managed through one rclc_executor.
 //
-// State machine handles agent connection lifecycle:
-//   WAITING_AGENT → AGENT_AVAILABLE → AGENT_CONNECTED → AGENT_DISCONNECTED
+// State machine handles configuration and agent connection lifecycle:
+//   CONFIG_PORTAL → WAITING_AGENT → AGENT_AVAILABLE → AGENT_CONNECTED → AGENT_DISCONNECTED
 //
 // Safety: servos stop on agent disconnect or cmd_vel timeout.
 
@@ -28,16 +28,12 @@
 #include "led_controller.h"
 #include "led_ring_status.h"
 #include "buzzer.h"
-
-// WiFi credentials (user must copy wifi_credentials.h.example)
-#if __has_include("wifi_credentials.h")
-#include "wifi_credentials.h"
-#else
-#error "Missing wifi_credentials.h — copy wifi_credentials.h.example to wifi_credentials.h and edit it."
-#endif
+#include "wifi_config.h"
+#include "wifi_portal.h"
 
 // Agent connection state machine
 enum AgentState {
+    CONFIG_PORTAL,      // Captive portal for WiFi/agent setup
     WAITING_AGENT,
     AGENT_AVAILABLE,
     AGENT_CONNECTED,
@@ -47,14 +43,12 @@ enum AgentState {
 static AgentState state = WAITING_AGENT;
 static int ping_fail_count = 0;  // consecutive ping failures; reset on success or reconnect
 
-// WiFi credentials at file scope so reconnection after a drop can re-use them
-static char g_ssid[] = WIFI_SSID;
-static char g_pass[] = WIFI_PASSWORD;
+// Runtime WiFi config loaded from NVS
+static WifiConfig g_cfg = {};
 
 // Scan for all APs with our SSID, pick the one with the strongest signal, and
 // connect with the BSSID locked so the ESP32 cannot roam mid-session.
-// Using a BSSID-locked WiFi.begin() means a single association cycle — no
-// second WiFi.begin() is ever needed to "apply" the lock after the fact.
+// Uses credentials from g_cfg (loaded from NVS).
 // Returns true on success, false if SSID not found or association timed out.
 static bool wifi_scan_and_connect() {
     Serial.println("[Otto] Scanning for best AP...");
@@ -63,7 +57,7 @@ static bool wifi_scan_and_connect() {
     int best_channel = 0;
     int best_rssi = -200;
     for (int i = 0; i < n; i++) {
-        if (WiFi.SSID(i) == g_ssid && WiFi.RSSI(i) > best_rssi) {
+        if (WiFi.SSID(i) == g_cfg.ssid && WiFi.RSSI(i) > best_rssi) {
             best_rssi = WiFi.RSSI(i);
             best_channel = WiFi.channel(i);
             memcpy(best_bssid, WiFi.BSSID(i), 6);
@@ -72,7 +66,7 @@ static bool wifi_scan_and_connect() {
     WiFi.scanDelete();
 
     if (best_rssi == -200) {
-        Serial.printf("[Otto] SSID '%s' not found in scan\n", g_ssid);
+        Serial.printf("[Otto] SSID '%s' not found in scan\n", g_cfg.ssid);
         return false;
     }
 
@@ -81,7 +75,7 @@ static bool wifi_scan_and_connect() {
         best_bssid[3], best_bssid[4], best_bssid[5],
         best_channel, best_rssi);
 
-    WiFi.begin(g_ssid, g_pass, best_channel, best_bssid);
+    WiFi.begin(g_cfg.ssid, g_cfg.pass, best_channel, best_bssid);
     unsigned long t = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - t < 15000) delay(100);
 
@@ -205,49 +199,58 @@ void setup() {
     led_status_color(255, 80, 0);  // Orange
     buzzer_beep();
 
-    // Stage 2: Connecting WiFi — yellow LEDs
-    Serial.println("[Otto] Connecting to WiFi...");
+    // Stage 2: Load config from NVS
+    if (!wifi_config_load(g_cfg)) {
+        // No saved config — enter captive portal
+        Serial.println("[Otto] No WiFi config found, starting setup portal...");
+        led_status_color(170, 0, 255);  // Magenta
+        buzzer_tone(660, 100);
+        delay(50);
+        buzzer_tone(880, 100);
+        portal_start();
+        state = CONFIG_PORTAL;
+        return;
+    }
+
+    // Stage 3: Connecting WiFi — yellow LEDs
+    Serial.printf("[Otto] Connecting to '%s'...\n", g_cfg.ssid);
     led_status_color(255, 200, 0);  // Yellow
 
     // WiFi settings applied before first scan/connect so they take effect immediately.
     WiFi.mode(WIFI_STA);
-    // Reduce TX power: default 20dBm peaks cause large current spikes from battery.
-    // 13dBm is plenty for home use and cuts peak draw by ~75%.
     WiFi.setTxPower(WIFI_POWER_13dBm);
-    // Disable modem sleep — prevents missed beacons that cause phantom disconnects.
     WiFi.setSleep(false);
-    // Disable auto-reconnect; we manage reconnection manually in WAITING_AGENT
-    // so we can pick the best AP after a real WiFi drop.
     WiFi.setAutoReconnect(false);
 
-    // Apply static IP BEFORE WiFi.begin() — ESP32 requires this order.
-    // WiFi.config() after WiFi.begin() can break the network stack.
-#ifdef STATIC_IP
-    {
-        IPAddress static_ip, gateway, subnet;
-        static_ip.fromString(STATIC_IP);
-        gateway.fromString(STATIC_GATEWAY);
-        subnet.fromString(STATIC_SUBNET);
-        WiFi.config(static_ip, gateway, subnet);
-        Serial.print("[Otto] Using static IP: ");
-        Serial.println(STATIC_IP);
+    // Try to connect; if all retries fail, fall back to portal
+    bool connected = false;
+    for (int attempt = 0; attempt < WIFI_CONNECT_RETRIES; attempt++) {
+        Serial.printf("[Otto] WiFi attempt %d/%d\n", attempt + 1, WIFI_CONNECT_RETRIES);
+        if (wifi_scan_and_connect()) {
+            connected = true;
+            break;
+        }
+        delay(1000);
     }
-#endif
 
-    // Scan for the best AP and connect with BSSID locked in one WiFi.begin().
-    // If the scan fails (AP not visible yet) we proceed anyway — the loop will
-    // call wifi_reconnect() and keep retrying.
-    wifi_scan_and_connect();
+    if (!connected) {
+        Serial.println("[Otto] WiFi connection failed, starting setup portal...");
+        led_status_color(170, 0, 255);  // Magenta
+        buzzer_tone(440, 150);
+        delay(50);
+        buzzer_tone(330, 150);
+        portal_start();
+        state = CONFIG_PORTAL;
+        return;
+    }
 
-    // Register micro-ROS UDP transport.  This is the same code that
-    // set_microros_wifi_transports() uses internally, but without the WiFi.begin()
-    // inside it — we already did that above with BSSID locking.
+    // Register micro-ROS UDP transport using config from NVS
     {
         IPAddress agent_ip;
-        agent_ip.fromString(AGENT_IP);
+        agent_ip.fromString(g_cfg.agent_ip);
         static struct micro_ros_agent_locator locator;
         locator.address = agent_ip;
-        locator.port    = AGENT_PORT;
+        locator.port    = g_cfg.agent_port;
         rmw_uros_set_custom_transport(
             false, (void *) &locator,
             platformio_transport_open,
@@ -258,8 +261,9 @@ void setup() {
 
     Serial.print("[Otto] WiFi IP: ");
     Serial.println(WiFi.localIP());
+    Serial.printf("[Otto] Agent: %s:%d\n", g_cfg.agent_ip, g_cfg.agent_port);
 
-    // Stage 3: WiFi connected — cyan LEDs + beep
+    // Stage 4: WiFi connected — cyan LEDs + beep
     Serial.println("[Otto] WiFi connected, waiting for micro-ROS agent...");
     led_status_color(0, 200, 255);  // Cyan
     buzzer_beep();
@@ -271,6 +275,18 @@ void loop() {
     static unsigned long last_state_change = 0;
 
     switch (state) {
+        case CONFIG_PORTAL:
+            portal_loop();
+            // Pulse magenta on ring while in portal mode
+            {
+                uint8_t brightness = (millis() / 4) % 256;
+                if (brightness > 127) brightness = 255 - brightness;
+                brightness = brightness * 2;
+                led_status_color((brightness * 170) / 255, 0, brightness);
+            }
+            digitalWrite(PIN_LED_BUILTIN, (millis() / 300) % 2);
+            break;
+
         case WAITING_AGENT:
             // If WiFi itself dropped, reconnect by scanning for the best AP
             if (WiFi.status() != WL_CONNECTED) {

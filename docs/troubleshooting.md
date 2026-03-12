@@ -8,8 +8,8 @@ Common issues and fixes for the Otto Starter micro-ROS project.
 
 | Problem | Fix |
 |---------|-----|
-| WiFi won't connect | Verify SSID and password in `wifi_credentials.h`. The ESP32 only supports 2.4 GHz (not 5 GHz). Check serial monitor for status messages |
-| Agent not reachable | Verify `AGENT_IP` in `wifi_credentials.h` matches your host IP. Ensure the agent is running (`./start.sh` or Docker). Check firewall: UDP port 8888 must be open. ESP32 and host must be on the same subnet |
+| WiFi won't connect | Re-enter setup mode (`pio run -t erase && pio run -t upload`) and verify SSID/password via the captive portal. The ESP32 only supports 2.4 GHz (not 5 GHz). Check serial monitor for status messages |
+| Agent not reachable | Re-enter setup mode and verify the agent IP matches your host IP. Ensure the agent is running (`./start.sh` or Docker). Check firewall: UDP port 8888 must be open. ESP32 and host must be on the same subnet |
 | Frequent disconnections | Move closer to the WiFi AP. The firmware locks to the strongest AP at boot (BSSID lock) — power-cycle the robot to re-scan if you move it far away. Brief blips (< 6 s) are tolerated without disconnecting. Serial monitor shows `[Otto] Agent ping failed (N/3)` for transient losses — this is normal |
 
 ---
@@ -19,7 +19,7 @@ Common issues and fixes for the Otto Starter micro-ROS project.
 | Problem | Fix |
 |---------|-----|
 | First build takes > 15 min | Normal. micro_ros_platformio builds the entire micro-ROS static library. Subsequent builds are fast (~10 s) |
-| `wifi_credentials.h` not found | Copy the template: `cp firmware/src/wifi_credentials.h.example firmware/src/wifi_credentials.h` and edit it |
+| Robot enters setup mode every boot | WiFi config may be corrupt or the saved network is not reachable. Connect to the "Otto-XXXX" AP and re-enter your WiFi details via the captive portal |
 | Build fails with micro-ROS errors | Try `pio run --target clean && pio run`. If that fails, delete `.pio/` and rebuild. Ensure `board_microros_distro` in `platformio.ini` is `jazzy` |
 
 ---

@@ -161,4 +161,11 @@
 #define AGENT_PING_FAIL_MAX      3  // consecutive failures before disconnect (~6 s)
 #define AGENT_RECONNECT_MS     500  // Delay between reconnection attempts
 
+// ============================================================
+// Captive Portal / Soft-AP Configuration
+// ============================================================
+#define AP_SSID_PREFIX        "Otto-"   // AP name becomes "Otto-XXXX" (last 4 hex of MAC)
+#define AP_CHANNEL            1         // WiFi channel for the config AP
+#define WIFI_CONNECT_RETRIES  3         // STA connect attempts before falling back to portal
+
 #endif // OTTO_CONFIG_H

@@ -47,7 +47,8 @@ Control your HP Robots Otto Starter Kit with ROS2! This cute little educational 
 
 | Document | Description |
 |----------|-------------|
-| [docs/flashing.md](docs/flashing.md) | Detailed firmware flashing guide |
+| [docs/flashing.md](docs/flashing.md) | Firmware flashing and WiFi setup |
+| [docs/building.md](docs/building.md) | Building firmware from source |
 | [docs/wiring.md](docs/wiring.md) | GPIO pin reference and connector map |
 | [docs/mapping_demo.md](docs/mapping_demo.md) | SLAM mapping walkthrough |
 | [docs/hardware.md](docs/hardware.md) | CAD source files and mesh export |
@@ -66,9 +67,9 @@ Control your HP Robots Otto Starter Kit with ROS2! This cute little educational 
 
 **Computer**
 - Ubuntu 24.04 with [ROS2 Jazzy](https://docs.ros.org/en/jazzy/Installation.html) installed
-- [VS Code](https://code.visualstudio.com/) with the [PlatformIO extension](https://platformio.org/install/ide?install=vscode)
+- Python 3 with `esptool` (`pip install esptool`) for flashing firmware
 
-> **Alternatively**, you can run the ROS2 stack in Docker — see [docs/docker.md](docs/docker.md). You still need PlatformIO to flash the firmware.
+> **Alternatively**, you can run the ROS2 stack in Docker — see [docs/docker.md](docs/docker.md).
 
 ---
 
@@ -84,44 +85,31 @@ Open a new terminal when it finishes (so the shell picks up the new settings).
 
 ---
 
-## Step 2: Configure WiFi
+## Step 2: Flash the robot
 
-Copy the WiFi template and fill in your network details:
+Download the latest `firmware.bin` from the [GitHub Releases](https://github.com/FyrbyAdditive/Otto-microROS/releases) page, then flash it:
 
 ```bash
-cp firmware/src/wifi_credentials.h.example firmware/src/wifi_credentials.h
+pip install esptool  # if you don't have it
+esptool.py --port /dev/ttyUSB0 --baud 460800 \
+  write_flash 0x10000 firmware.bin
 ```
 
-Open `firmware/src/wifi_credentials.h` and edit these four lines:
-
-```cpp
-#define WIFI_SSID      "YourWiFiName"       // 2.4 GHz networks only
-#define WIFI_PASSWORD  "YourWiFiPassword"
-#define AGENT_IP       "192.168.1.100"       // Your computer's IP address
-#define AGENT_PORT     8888
-```
-
-To find your computer's IP address: `hostname -I | awk '{print $1}'`
+See [docs/flashing.md](docs/flashing.md) for detailed instructions and troubleshooting.
 
 ---
 
-## Step 3: Flash the robot
+## Step 3: Configure WiFi
 
-Connect the robot to your computer with a USB-C cable. In VS Code:
+On first boot, the robot enters **setup mode** — the LED ring pulses magenta and a WiFi network named **Otto-XXXX** appears.
 
-1. Open the `firmware/` folder
-2. Click the **PlatformIO** icon in the sidebar
-3. Click **Upload** under the `otto_starter` environment
+1. Connect to the **Otto-XXXX** network from your phone or laptop
+2. A captive portal opens — select your WiFi network, enter the password, and set the micro-ROS agent IP and port
+3. Click **Save & Connect** — the robot reboots and connects to your WiFi
 
-The first build takes 5–15 minutes (it downloads the ESP32 toolchain). After that, rebuilds take about 10 seconds.
+To find your computer's IP address: `hostname -I | awk '{print $1}'`
 
-To verify the flash worked, open the PlatformIO **Serial Monitor**. You should see:
-```
-[Otto] WiFi connected, waiting for micro-ROS agent...
-```
-The blue LED on the robot will blink while it searches for the agent.
-
-See [docs/flashing.md](docs/flashing.md) for detailed instructions and troubleshooting.
+The configuration is saved to the robot's flash and persists across reboots. To re-configure, erase and re-flash.
 
 ---
 
@@ -220,9 +208,14 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 ```
 ├── firmware/                   # ESP32 micro-ROS firmware (PlatformIO)
 │   ├── platformio.ini
+│   ├── scripts/
+│   │   └── compress_html.py    # Build script: HTML → gzipped C header
 │   └── src/
 │       ├── main.cpp            # micro-ROS state machine
 │       ├── otto_config.h       # GPIO pins and constants
+│       ├── wifi_config.*       # NVS-backed WiFi/agent settings
+│       ├── wifi_portal.*       # Captive portal (Soft-AP setup)
+│       ├── portal_page.html    # Config page UI source
 │       ├── drive_controller.*  # Differential drive
 │       ├── led_controller.*    # NeoPixel LEDs
 │       ├── led_ring_status.*   # Eye ring idle/direction animation
@@ -246,7 +239,8 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 ├── setup.sh                    # One-time dependency installer
 ├── start.sh                    # Start agent + robot stack
 └── docs/                       # Documentation
-    ├── flashing.md             # Detailed flashing guide
+    ├── flashing.md             # Firmware flashing and WiFi setup
+    ├── building.md             # Building firmware from source
     ├── wiring.md               # GPIO pin reference
     ├── hardware.md             # CAD source files and mesh export
     ├── mapping_demo.md         # SLAM walkthrough
@@ -259,12 +253,7 @@ ros2 topic pub --once /buzzer std_msgs/msg/UInt16 "{data: 0}"     # silence
 
 ## Serial bus servo mode
 
-To use Feetech/Waveshare STS/SCS serial bus servos instead of the stock PWM servos, change the build flag in `firmware/platformio.ini`:
-
-```ini
-build_flags =
-    -DSERVO_TYPE_SERIAL_BUS=1
-```
+To use Feetech/Waveshare STS/SCS serial bus servos instead of the stock PWM servos, you'll need to [build the firmware from source](docs/building.md) with the `SERVO_TYPE_SERIAL_BUS=1` build flag. Pre-built releases only support the stock PWM servos.
 
 This uses GPIO 16/17 (Connector 2) for the servo UART. The ultrasonic sensor remains available. See [docs/wiring.md](docs/wiring.md) for details.
 

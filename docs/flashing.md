@@ -1,6 +1,6 @@
 # Flashing Firmware
 
-Complete guide from a fresh clone to a running micro-ROS node on the ESP32.
+Get the Otto firmware onto your ESP32 and configure WiFi — no build tools needed.
 
 ---
 
@@ -14,20 +14,13 @@ Complete guide from a fresh clone to a running micro-ROS node on the ESP32.
 
 ### Software
 
-- **PlatformIO CLI** or VS Code with the PlatformIO extension
+- **esptool** — the ESP32 flash utility
 - A USB-to-UART driver (most systems have this built in)
 
-**Install PlatformIO CLI (if not using VS Code):**
+**Install esptool:**
 
 ```bash
-# macOS / Linux
-curl -fsSL -o get-platformio.py \
-  https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py
-python3 get-platformio.py
-# Add to PATH: export PATH="$HOME/.platformio/penv/bin:$PATH"
-
-# Or via pip:
-pip install platformio
+pip install esptool
 ```
 
 **Install USB driver (if needed):**
@@ -40,22 +33,56 @@ pip install platformio
 
 ---
 
-## Step 1 — Configure WiFi Credentials
+## Step 1 — Download the Firmware
 
-```bash
-cp firmware/src/wifi_credentials.h.example firmware/src/wifi_credentials.h
-```
+Download the latest `firmware.bin` from the [GitHub Releases](https://github.com/FyrbyAdditive/Otto-microROS/releases) page.
 
-Open `firmware/src/wifi_credentials.h` and fill in your values:
+The pre-built binary supports the stock PWM continuous rotation servos. If you're using Feetech/Waveshare serial bus servos, you'll need to [build from source](building.md) with the `SERVO_TYPE_SERIAL_BUS=1` flag.
 
-```cpp
-#define WIFI_SSID      "YourWiFiName"       // Must be 2.4 GHz
-#define WIFI_PASSWORD  "YourWiFiPassword"
-#define AGENT_IP       "192.168.1.100"       // IP of the machine running the micro-ROS agent
-#define AGENT_PORT     8888
-```
+---
 
-**Finding your host machine's IP:**
+## Step 2 — Connect and Flash
+
+1. Turn **off** the Otto robot
+2. Connect the USB-C cable between Otto and your computer
+3. Find the serial port:
+   ```bash
+   # Linux
+   ls /dev/ttyUSB*
+
+   # macOS
+   ls /dev/cu.usbserial-*
+
+   # Windows (Device Manager → Ports)
+   ```
+4. Flash the firmware:
+   ```bash
+   esptool.py --port /dev/ttyUSB0 --baud 460800 \
+     write_flash 0x10000 firmware.bin
+   ```
+   Replace `/dev/ttyUSB0` with your actual port.
+
+**If upload fails:**
+
+- Hold the **BOOT** button on the ESP32 while the command runs; release after "Connecting..." appears
+- Try a different USB-C cable (charge-only cables won't work)
+- Try a different USB port (avoid hubs)
+- If no serial port appears, install the USB driver (see Prerequisites)
+
+---
+
+## Step 3 — Configure WiFi (First Boot)
+
+On first boot (or after erasing flash), the robot enters **setup mode**:
+
+1. The LED ring pulses **magenta** and the buzzer plays an ascending tone
+2. The robot creates a WiFi network named **Otto-XXXX** (where XXXX is unique to your board)
+3. Connect to that network from your phone or laptop
+4. A captive portal page opens automatically — if it doesn't, open a browser to `http://192.168.4.1`
+5. Select your WiFi network from the scan results, enter the password, and fill in the micro-ROS agent IP and port
+6. Click **Save & Connect** — the robot reboots and connects to your WiFi
+
+**Finding your host machine's IP (for the agent IP field):**
 
 ```bash
 # macOS
@@ -68,80 +95,30 @@ hostname -I | awk '{print $1}'
 ipconfig | findstr "IPv4"
 ```
 
-This file is `.gitignored` and will never be committed.
+The configuration is stored in NVS (non-volatile storage) and persists across reboots.
 
----
-
-## Step 2 — Build the Firmware
+**To re-enter setup mode**, erase the flash and re-flash:
 
 ```bash
-cd firmware
-pio run -e otto_starter
+esptool.py --port /dev/ttyUSB0 erase_flash
+esptool.py --port /dev/ttyUSB0 --baud 460800 \
+  write_flash 0x10000 firmware.bin
 ```
-
-**First build** takes 5–15 minutes. PlatformIO will:
-
-1. Download the ESP32 toolchain (~300 MB)
-2. Download library dependencies (micro_ros_platformio, ESP32Servo, Adafruit NeoPixel)
-3. Build the micro-ROS static library for Jazzy (~5–10 min)
-4. Compile the Otto firmware (~10 s)
-
-Subsequent builds only run step 4 and take ~10 seconds.
-
-**If the build fails:**
-
-- Delete `.pio/` and try again: `rm -rf .pio && pio run -e otto_starter`
-- Ensure Python 3.8+ is installed: `python3 --version`
-- Check PlatformIO is up to date: `pio upgrade`
 
 ---
 
-## Step 3 — Connect and Flash
+## Step 4 — Verify
 
-1. Turn **off** the Otto robot
-2. Connect the USB-C cable between Otto and your computer
-3. Verify the port is detected:
-   ```bash
-   pio device list
-   # Should show something like /dev/cu.usbserial-0001 or /dev/ttyUSB0
-   ```
-4. Flash:
-   ```bash
-   pio run -t upload
-   ```
+Power on the robot (unplug USB, use the power switch). You should see:
 
-**If upload fails:**
+| LED state | Meaning |
+|-----------|---------|
+| Pulsing magenta | Setup mode — connect to Otto-XXXX WiFi |
+| Pulsing cyan | Connected to WiFi, searching for micro-ROS agent |
+| Solid green (briefly) | Agent found, entities created |
+| Blue ring animation | Normal operation, connected to agent |
 
-- Hold the **BOOT** button on the ESP32 while upload starts; release after "Connecting..." appears
-- Try a different USB-C cable (charge-only cables won't work)
-- Try a different USB port (avoid hubs)
-- Check `pio device list` — if no port appears, you need a USB driver (see Prerequisites)
-
----
-
-## Step 4 — Verify via Serial Monitor
-
-```bash
-pio device monitor
-```
-
-**Without the micro-ROS agent running**, you should see:
-
-```
-[Otto] WiFi connected, waiting for micro-ROS agent...
-```
-
-The blue LED blinks slowly (0.5 s on/off) while searching for the agent. This confirms WiFi is working and the firmware is running.
-
-**With the micro-ROS agent running** (see the [README](../README.md#3-start-the-ros2-stack)):
-
-```
-[Otto] WiFi connected, waiting for micro-ROS agent...
-[Otto] Agent found!
-[Otto] micro-ROS entities created, connected!
-```
-
-The blue LED goes solid when connected.
+The blue onboard LED blinks while searching and goes solid when connected.
 
 ---
 
@@ -151,25 +128,6 @@ The blue LED goes solid when connected.
 2. Turn the robot **on** via the power switch
 3. The firmware starts automatically from flash
 4. Once WiFi connects and the agent is reachable, the blue LED goes solid
-
----
-
-## Updating Firmware
-
-After code changes:
-
-```bash
-cd firmware
-pio run -t upload && pio device monitor
-```
-
-| Change | Rebuild time |
-|--------|:------------:|
-| Any `.cpp` or `.h` file | ~10 s |
-| `otto_config.h` pin definitions or calibration values | ~10 s |
-| `platformio.ini` build flags | ~10 s |
-| `custom_meta.meta` (publisher/subscriber counts) | 5–15 min |
-| `board_microros_distro` in `platformio.ini` | 5–15 min |
 
 ---
 
